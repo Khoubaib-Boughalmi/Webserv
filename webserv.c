@@ -23,17 +23,15 @@ struct sockaddr_in address;
 fd_set read_fds;
 
 void set_non_blocking_socket(int fd) {
-     int flags = fcntl(fd, F_GETFL, 0);
+    int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
-        perror("F_GETFL");
+        perror("fcntl err: ");
         exit(EXIT_FAILURE);
     }
-    int res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    if (res == -1) {
-        perror("F_SETFL");
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl err: ");
         exit(EXIT_FAILURE);
     }
-    return;
 }
 
 void initialization_and_socket_creation (void) {
@@ -43,13 +41,13 @@ void initialization_and_socket_creation (void) {
     //create master socket
     master_socket = socket(AF_INET, SOCK_STREAM, 0);
     printf("Master sock: %d\n", master_socket);
-    if( master_socket <= 0 ) {
-        perror("socket failed: ");
+    if (master_socket < 0) {
+        perror("Master socket creation err: ");
         exit(EXIT_FAILURE);
     }
     // make master_fd address bind reusable
-    if ( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ) {
-        perror("setsockopt SO_REUSEADDR err: ");
+    if (setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0) {
+        perror("setsockopt err: ");
         exit(EXIT_FAILURE);
     }
     // make master_fd non_blocking
@@ -58,31 +56,30 @@ void initialization_and_socket_creation (void) {
 
 
 void bind_and_listen(void) {
-    if(bind(master_socket, (struct sockaddr *) &address, addrlen) < 0) {
-        perror("bind err: ");
+    //bind master_fd to address
+    if (bind(master_socket, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("Bind err: ");
         exit(EXIT_FAILURE);
     }
-    printf("bind successfully\n");
-    if(listen(master_socket, 10) < 0) {
-        perror("bind err: ");
+    //listen to master_fd
+    if (listen(master_socket, 3) < 0) {
+        perror("Listen err: ");
         exit(EXIT_FAILURE);
     }
-    printf("listening successfully\n");
+    printf("Listening on port %d \n", PORT);
 }
 
 void build_read_set(void) {
     FD_ZERO(&read_fds);
-    //set master_FD
     FD_SET(master_socket, &read_fds);
-    printf("master_socket: %d\n", master_socket);
     highest_fd_val = master_socket;
-    for (int i = 0; i < MAX_CONNECTIONS; i++)
+    for (int index = 0; index < MAX_CONNECTIONS; index++)
     {
-        FD_SET(client_sockets_FD[i], &read_fds);
-        if(client_sockets_FD[i] > highest_fd_val)
-            highest_fd_val = client_sockets_FD[i];
+        if(client_sockets_FD[index] > 0)
+            FD_SET(client_sockets_FD[index], &read_fds);
+        if(client_sockets_FD[index] > highest_fd_val)
+            highest_fd_val = client_sockets_FD[index];
     }
-    printf("highest_fd_val: %d\n", highest_fd_val);
 }
 
 void accept_new_request(void) {
@@ -116,11 +113,8 @@ void select_accept_recv_send_handler(void) {
     
     while (TRUE)
     {
-        printf("trueeeeee\n");
         build_read_set();
-        printf("builssssddd\n");
-        activity_fds = select(1024, &read_fds, (fd_set *)0, (fd_set *)0, NULL);
-        
+        activity_fds = select(1024, &read_fds, NULL, NULL, NULL);        
         printf("activity_fds: %d\n", activity_fds);
         if (activity_fds < 0){
             perror("select err: ");
@@ -163,7 +157,7 @@ void select_accept_recv_send_handler(void) {
 void initialize_server_address(void) {
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_port = 8085;
+    address.sin_port = htons(PORT);
     address.sin_addr.s_addr = INADDR_ANY;
     addrlen = sizeof(address);
 }
