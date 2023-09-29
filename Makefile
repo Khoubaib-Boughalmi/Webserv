@@ -4,10 +4,10 @@ CFLAGS= -Wall -Wextra -Werror
 
 SRCS =	webserv.c \
 
-%.o:%.cpp
+%.o:%.c
 	${CC} ${CFLAGS} -c $^ -o $@
 
-OBJS = ${SRCS:.cpp=.o}
+OBJS = ${SRCS:.c=.o}
 
 ${NAME}: ${OBJS}
 	${CC} ${CFLAGS} ${OBJS} -o ${NAME}

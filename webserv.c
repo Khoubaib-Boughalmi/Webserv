@@ -8,29 +8,32 @@
 #include <sys/time.h>
 #include <netinet/in.h> 
 
-#define PORT            8080
 #define TRUE            1
 #define FALSE           0
 #define MAX_CONNECTIONS 42
+#define PORT            8080
 
 int client_sockets_FD[MAX_CONNECTIONS];
-int master_socket, opt = 1;
+int master_socket;
+int opt = 1;
 int highest_fd_val;
+socklen_t addrlen;
 
 struct sockaddr_in address;  
 fd_set read_fds;
 
 void set_non_blocking_socket(int fd) {
-    int flags = fcntl(fd, F_GETFD, 0) ;
-    if (flags <= 0) {
-        perror("F_GETFD:");
+     int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("F_GETFL");
         exit(EXIT_FAILURE);
     }
-    int res = fcntl(fd, F_SETFD, flags | O_NONBLOCK) ;
-    if(res <= 0) {
-        perror("F_SETFD:");
+    int res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (res == -1) {
+        perror("F_SETFL");
         exit(EXIT_FAILURE);
     }
+    return;
 }
 
 void initialization_and_socket_creation (void) {
@@ -38,13 +41,15 @@ void initialization_and_socket_creation (void) {
     for ( int i = 0; i < MAX_CONNECTIONS; i++ )
         client_sockets_FD[i] = 0;
     //create master socket
-    if( master_socket = socket(AF_INET, SOCK_STREAM, 0) <= 0 ) {
+    master_socket = socket(AF_INET, SOCK_STREAM, 0);
+    printf("Master sock: %d\n", master_socket);
+    if( master_socket <= 0 ) {
         perror("socket failed: ");
         exit(EXIT_FAILURE);
     }
     // make master_fd address bind reusable
-    if ( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <= 0 ) {
-        perror("setsockopt SO_REUSEADDR err:");
+    if ( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ) {
+        perror("setsockopt SO_REUSEADDR err: ");
         exit(EXIT_FAILURE);
     }
     // make master_fd non_blocking
@@ -53,23 +58,23 @@ void initialization_and_socket_creation (void) {
 
 
 void bind_and_listen(void) {
-    if(bind(master_socket, (struct sockaddr *) &address, sizeof(address)) < 0) {
-        perror("bind err:");
+    if(bind(master_socket, (struct sockaddr *) &address, addrlen) < 0) {
+        perror("bind err: ");
         exit(EXIT_FAILURE);
     }
     printf("bind successfully\n");
     if(listen(master_socket, 10) < 0) {
-        perror("bind err:");
+        perror("bind err: ");
         exit(EXIT_FAILURE);
     }
     printf("listening successfully\n");
 }
 
 void build_read_set(void) {
-    //initialize read_fds with 0s
     FD_ZERO(&read_fds);
     //set master_FD
     FD_SET(master_socket, &read_fds);
+    printf("master_socket: %d\n", master_socket);
     highest_fd_val = master_socket;
     for (int i = 0; i < MAX_CONNECTIONS; i++)
     {
@@ -77,26 +82,97 @@ void build_read_set(void) {
         if(client_sockets_FD[i] > highest_fd_val)
             highest_fd_val = client_sockets_FD[i];
     }
+    printf("highest_fd_val: %d\n", highest_fd_val);
+}
+
+void accept_new_request(void) {
+    int client_fd = accept(master_socket, (struct sockaddr *) &address, &addrlen);
+    if(client_fd < 0)
+    {
+        perror("Client Connection err: ");
+        exit(EXIT_FAILURE);
+    }
+    //add new clients fd to client_sockets_FD
+    int index = 0;
+    for (; index < MAX_CONNECTIONS; index++)
+    {
+        //find an empty slot
+        if(client_sockets_FD[index] == 0) {
+            printf("New request accepted\n");
+            client_sockets_FD[index] = client_fd;
+            break;
+        }
+    }
+    //no available slots in client_sockets_FD
+    if(index == MAX_CONNECTIONS)
+        printf("Server is overloaded try later..\n"); //should be sent to client
 }
 
 void select_accept_recv_send_handler(void) {
-    int select_fds = 0;
+    int     activity_fds;
+    char    buff[1024];
+    int     req;
+    char    *response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Hello, World!</h1>\r\n<p>This is a sample page.</p>\r\n</body>\r\n</html>\r\n";
+    
     while (TRUE)
     {
+        printf("trueeeeee\n");
         build_read_set();
-        select_fds = select(highest_fd_val + 1, &read_fds, NULL, NULL, NULL);
-        //accept-recv-send
+        printf("builssssddd\n");
+        activity_fds = select(1024, &read_fds, (fd_set *)0, (fd_set *)0, NULL);
+        
+        printf("activity_fds: %d\n", activity_fds);
+        if (activity_fds < 0){
+            perror("select err: ");
+            exit(EXIT_FAILURE);
+        }
+        if (activity_fds == 0)
+            continue;
+        //if there is an activty in master_socket then it's a new request
+        if (FD_ISSET(master_socket, &read_fds)) {
+            accept_new_request();
+        }
+        //loop through read_fds if any slot is set then it's a client request
+        for (int index = 0; index < MAX_CONNECTIONS; index++)
+        {
+            if(FD_ISSET(client_sockets_FD[index], &read_fds) && \
+            client_sockets_FD[index] != master_socket ) {
+                memset(buff, 0, sizeof(buff));
+                req = recv(client_sockets_FD[index], &buff, sizeof(buff), 0);
+                //client disconnected
+                if(!req) {
+                    printf("Client with fd %d Disconnected\n", client_sockets_FD[index]);
+                    close(client_sockets_FD[index]);  
+                    client_sockets_FD[index] = 0;  
+                    continue;
+                }
+                printf("New request Socket with fd: %d", client_sockets_FD[index]);
+                if(send(client_sockets_FD[index], response, strlen(response), 0) < 0){
+                    perror("Send err: ");
+                    exit(EXIT_FAILURE);
+                }
+                close(client_sockets_FD[index]);
+                client_sockets_FD[index] = 0;
+            }
+        }
+         
     }
     
 }
 
 void initialize_server_address(void) {
+    memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_port = PORT;
+    address.sin_port = 8085;
     address.sin_addr.s_addr = INADDR_ANY;
+    addrlen = sizeof(address);
 }
 
 
 int main() {
+    initialization_and_socket_creation();
+    initialize_server_address();
+    bind_and_listen();
+    select_accept_recv_send_handler();
     return 0;
 }
