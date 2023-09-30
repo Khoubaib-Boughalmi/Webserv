@@ -1,26 +1,4 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h> 
-
-#define TRUE            1
-#define FALSE           0
-#define MAX_CONNECTIONS 42
-#define PORT            8080
-
-int client_sockets_FD[MAX_CONNECTIONS];
-int master_socket;
-int opt = 1;
-int highest_fd_val;
-socklen_t addrlen;
-
-struct sockaddr_in address;  
-fd_set read_fds;
+#include "server.hpp"
 
 void set_non_blocking_socket(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
@@ -109,7 +87,7 @@ void select_accept_recv_send_handler(void) {
     int     activity_fds;
     char    buff[1024];
     int     req;
-    char    *response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Hello, World!</h1>\r\n<p>This is a sample page.</p>\r\n</body>\r\n</html>\r\n";
+    std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Hello, World!</h1>\r\n<p>This is a sample page.</p>\r\n</body>\r\n</html>\r\n";
     
     while (TRUE)
     {
@@ -141,7 +119,7 @@ void select_accept_recv_send_handler(void) {
                     continue;
                 }
                 printf("New request Socket with fd: %d", client_sockets_FD[index]);
-                if(send(client_sockets_FD[index], response, strlen(response), 0) < 0){
+                if(send(client_sockets_FD[index], response.c_str(), strlen(response.c_str()), 0) < 0){
                     perror("Send err: ");
                     exit(EXIT_FAILURE);
                 }

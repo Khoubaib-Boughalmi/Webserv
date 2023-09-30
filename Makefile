@@ -1,13 +1,13 @@
-NAME=server
-CC= gcc
-CFLAGS= -Wall -Wextra -Werror
+CC= c++ 
+NAME=SERVER
+CFLAGS= -std=c++98 -Wall -Wextra -Werror
 
-SRCS =	webserv.c \
+SRCS = ./server/webserv.cpp
 
-%.o:%.c
+%.o:%.cpp
 	${CC} ${CFLAGS} -c $^ -o $@
 
-OBJS = ${SRCS:.c=.o}
+OBJS = ${SRCS:.cpp=.o}
 
 ${NAME}: ${OBJS}
 	${CC} ${CFLAGS} ${OBJS} -o ${NAME}
