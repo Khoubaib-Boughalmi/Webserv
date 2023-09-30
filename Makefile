@@ -2,7 +2,8 @@ CC= c++
 NAME=SERVER
 CFLAGS= -std=c++98 -Wall -Wextra -Werror
 
-SRCS = ./server/webserv.cpp
+SRCS = 	./main.cpp \
+		./server/server.cpp
 
 %.o:%.cpp
 	${CC} ${CFLAGS} -c $^ -o $@
