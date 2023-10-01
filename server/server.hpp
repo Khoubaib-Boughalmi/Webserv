@@ -47,7 +47,7 @@ class Server
     void set_non_blocking_socket (int fd);
     void select_accept_recv_send_handler (void);
     void add_fd_to_master_set (int fd);
-    void receive (int fd);
+    int receive (int fd);
     void send (int fd, int index);
 
 };

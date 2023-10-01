@@ -81,6 +81,8 @@ void Server::bind_and_listen(void) {
 
 void Server::init_read_write_fd_set(void) {
     //reinitialize master_fds because select() modifies it
+    for(unsigned int i = 0; i < sockets_FD.size(); i++)
+        FD_SET(sockets_FD[i], &(this->master_fds));
     FD_ZERO(&(this->read_fds));
     read_fds = master_fds;
 }
@@ -101,7 +103,7 @@ void Server::accept_new_request(void) {
         std::cout << "Server is overloaded try later.." << std::endl; //should be sent to client
 }
 
-void Server::receive(int fd) {
+int Server::receive(int fd) {
     int req;
     char buff[1024] = {0};
 
@@ -110,11 +112,20 @@ void Server::receive(int fd) {
     //client disconnected
     if(!req) {
         std::cout << "Client with fd " << fd << " Disconnected" << std::endl;
-        close(fd);  
+        close(fd);
+        FD_CLR(fd, &(this->read_fds));
+        FD_CLR(fd, &(this->master_fds));
+        for (unsigned int index = 0; index < sockets_FD.size(); index++){
+            if(sockets_FD[index] == fd) {
+                sockets_FD.erase(sockets_FD.begin() + index);
+                return 0;
+            }
+        }
     }
     std::cout << "Request from client with fd: " << fd << std::endl;
     FD_SET(fd, &(this->write_fds));
     printf("Request: %s\n", buff);
+    return 1;
 }
 
 void Server::send(int fd, int index) {
@@ -152,8 +163,9 @@ void Server::select_accept_recv_send_handler(void) {
             for (size_t index = 0; index < sockets_FD.size(); index++)
             {
                 if(FD_ISSET(sockets_FD[index], &(this->read_fds)) && sockets_FD[index] != this->master_socket ) {
-                    receive(sockets_FD[index]);
-                    break;
+                    if(!receive(sockets_FD[index])) {
+                        break;
+                    }
                 }
                 if(FD_ISSET(sockets_FD[index], &(this->write_fds)) && sockets_FD[index] != this->master_socket ) {
                     send(sockets_FD[index], index);
