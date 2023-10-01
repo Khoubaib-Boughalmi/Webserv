@@ -80,11 +80,9 @@ void Server::bind_and_listen(void) {
 }
 
 void Server::init_read_write_fd_set(void) {
-    // FD_ZERO(&(this->read_fds));
-    // FD_ZERO(&(this->write_fds));
+    //reinitialize master_fds because select() modifies it
+    FD_ZERO(&(this->read_fds));
     read_fds = master_fds;
-    write_fds = master_fds;
-    
 }
 
 void Server::accept_new_request(void) {
@@ -107,7 +105,7 @@ void Server::receive(int fd) {
     int req;
     char buff[1024] = {0};
 
-    FD_CLR(fd, &(this->read_fds));
+    // FD_CLR(fd, &(this->read_fds));
     req = recv(fd, &buff, sizeof(buff), 0);
     //client disconnected
     if(!req) {
@@ -115,12 +113,25 @@ void Server::receive(int fd) {
         close(fd);  
     }
     std::cout << "Request from client with fd: " << fd << std::endl;
+    FD_SET(fd, &(this->write_fds));
     printf("Request: %s\n", buff);
+}
+
+void Server::send(int fd, int index) {
+    std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Boobies!</h1>\r\n<p>This is a sample page.</p>\r\n</body>\r\n</html>\r\n";
+
+    if(::send(fd, response.c_str(), response.length() , 0) < 0){
+        perror("Send err: ");
+        exit(EXIT_FAILURE);
+    }
+    close(fd);
+    FD_CLR(fd, &(this->write_fds));
+    FD_CLR(fd, &(this->master_fds));
+    sockets_FD.erase(sockets_FD.begin() + index);
 }
 
 void Server::select_accept_recv_send_handler(void) {
     int     activity_fds;
-    std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Boobies!</h1>\r\n<p>This is a sample page.</p>\r\n</body>\r\n</html>\r\n";
     
     while (TRUE)
     {
@@ -136,24 +147,20 @@ void Server::select_accept_recv_send_handler(void) {
         if (FD_ISSET(this->master_socket, &(this->read_fds))) {
             accept_new_request();
         }
-        //loop through this->read_fds if any slot is set then it's a client request
-        for (size_t index = 0; index < sockets_FD.size(); index++)
-        {
-            if(FD_ISSET(sockets_FD[index], &(this->read_fds)) && sockets_FD[index] != this->master_socket ) {
-                receive(sockets_FD[index]);
-            }
-            if(FD_ISSET(sockets_FD[index], &(this->write_fds)) && sockets_FD[index] != this->master_socket ) {
-                FD_CLR(sockets_FD[index], &(this->write_fds));
-                if(send(sockets_FD[index], response.c_str(), response.length() , 0) < 0){
-                    perror("Send err: ");
-                    exit(EXIT_FAILURE);
+        else { //connection is already established
+            //loop through this->read_fds if any slot is set then it's a client request
+            for (size_t index = 0; index < sockets_FD.size(); index++)
+            {
+                if(FD_ISSET(sockets_FD[index], &(this->read_fds)) && sockets_FD[index] != this->master_socket ) {
+                    receive(sockets_FD[index]);
+                    break;
                 }
-                close(sockets_FD[index]);
-                FD_CLR(sockets_FD[index], &(this->master_fds));
-                sockets_FD.erase(sockets_FD.begin() + index);
+                if(FD_ISSET(sockets_FD[index], &(this->write_fds)) && sockets_FD[index] != this->master_socket ) {
+                    send(sockets_FD[index], index);
+                }
             }
         }
-        usleep(1000);
+        // usleep(5000);
     }
 }
 
