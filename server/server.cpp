@@ -11,6 +11,12 @@ Server::~Server()
 {
 }
 
+void Server::cleanFDSet(void) {
+    FD_ZERO(&(this->master_fds));
+    FD_ZERO(&(this->read_fds));
+    FD_ZERO(&(this->write_fds));
+}
+
 void Server::add_fd_to_master_set(int fd) {
     sockets_FD.push_back(fd);
     std::sort(sockets_FD.begin(), sockets_FD.end());
@@ -43,9 +49,7 @@ void Server::initialization_and_socket_creation (void) {
     this->opt = 1;
     this->master_socket = 0;
 
-    FD_ZERO(&(this->master_fds));
-    FD_ZERO(&(this->read_fds));
-    FD_ZERO(&(this->write_fds));
+    Server::cleanFDSet();
     //create master socket
     this->master_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (this->master_socket < 0) {
@@ -81,9 +85,9 @@ void Server::bind_and_listen(void) {
 
 void Server::init_read_write_fd_set(void) {
     //reinitialize master_fds because select() modifies it
+    cleanFDSet();
     for(unsigned int i = 0; i < sockets_FD.size(); i++)
         FD_SET(sockets_FD[i], &(this->master_fds));
-    FD_ZERO(&(this->read_fds));
     read_fds = master_fds;
 }
 
@@ -117,7 +121,7 @@ int Server::receive(int fd) {
         FD_CLR(fd, &(this->master_fds));
         for (unsigned int index = 0; index < sockets_FD.size(); index++){
             if(sockets_FD[index] == fd) {
-                sockets_FD.erase(sockets_FD.begin() + index);
+                sockets_FD.erase(sockets_FD.begin() + index); //remove mutant fd from sockets_FD
                 return 0;
             }
         }
@@ -136,8 +140,6 @@ void Server::send(int fd, int index) {
         exit(EXIT_FAILURE);
     }
     close(fd);
-    FD_CLR(fd, &(this->write_fds));
-    FD_CLR(fd, &(this->master_fds));
     sockets_FD.erase(sockets_FD.begin() + index);
 }
 
@@ -169,6 +171,7 @@ void Server::select_accept_recv_send_handler(void) {
                 }
                 if(FD_ISSET(sockets_FD[index], &(this->write_fds)) && sockets_FD[index] != this->master_socket ) {
                     send(sockets_FD[index], index);
+                    break;
                 }
             }
         }

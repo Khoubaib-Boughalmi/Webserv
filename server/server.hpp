@@ -49,6 +49,7 @@ class Server
     void add_fd_to_master_set (int fd);
     int receive (int fd);
     void send (int fd, int index);
+    void cleanFDSet (void);
 
 };
 
