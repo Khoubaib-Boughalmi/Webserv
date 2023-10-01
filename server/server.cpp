@@ -133,14 +133,25 @@ int Server::receive(int fd) {
 }
 
 void Server::send(int fd, int index) {
+    int valread;
+    size_t total = 0;
     std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Boobies!</h1>\r\n<p>This is a sample page.</p>\r\n</body>\r\n</html>\r\n";
+    size_t bytesleft = response.length();
 
-    if(::send(fd, response.c_str(), response.length() , 0) < 0){
-        perror("Send err: ");
-        exit(EXIT_FAILURE);
+    //send may not send all bytes at once so we loop until all bytes are sent
+    while (total < response.length())
+    {
+        if((valread = ::send(fd, response.c_str() + total, bytesleft , 0)) < 0){
+                perror("Send err: ");
+                exit(EXIT_FAILURE);
+        }
+        if (valread == -1) { break; }
+        total += valread;
+        bytesleft -= valread;
     }
+
     close(fd);
-    sockets_FD.erase(sockets_FD.begin() + index);
+    sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
 }
 
 void Server::select_accept_recv_send_handler(void) {
