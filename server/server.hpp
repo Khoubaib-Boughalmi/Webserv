@@ -38,6 +38,7 @@ class Server
     void set_non_blocking_socket (int fd);
     void select_accept_recv_send_handler (void);
     void add_fd_to_master_set (int fd);
+    void handle_already_existing_connection(void) ;
     int receive (int fd);
     void send (int fd, int index);
     void cleanFDSet (void);

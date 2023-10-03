@@ -159,6 +159,7 @@ int Server::receive(int fd) {
     }
     std::cout << "Request from client with fd: " << fd << std::endl;
     FD_SET(fd, &(this->write_fds));
+    update_client_connected_time(fd);
     // printf("Request: %s\n", buff);
     return 1;
 }
@@ -166,7 +167,7 @@ int Server::receive(int fd) {
 void Server::send(int fd, int index) {
     int valread;
     size_t total = 0;
-    std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Hello world!</h1>\r\n<p>This is a sample page.</p>\r\n<img src=\"https://images.pexels.com/photos/842711/pexels-photo-842711.jpeg\" alt=\"W3Schools.com\">\r\n</body>\r\n</html>\r\n";
+    std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nContent-Length: 350\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Hello world!</h1>\r\n<p>This is a sample page.</p>\r\n<img src=\"https://images.pexels.com/photos/842711/pexels-photo-842711.jpeg\" alt=\"W3Schools.com\">\r\n</body>\r\n</html>\r\n";
     size_t bytesleft = response.length();
 
     //send may not send all bytes at once so we loop until all bytes are sent
@@ -181,24 +182,42 @@ void Server::send(int fd, int index) {
         bytesleft -= valread;
     }
 
-    close(fd);
     // delete &sockets_FD[index];
-    sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
+    (void)index;
+    // close(fd);
+    // sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
 }
 
 void Server::check_for_timeout(void) {
     for (size_t index = 0; index < sockets_FD.size() ; index++)
     {
         double elapsedTime = (time(0) - sockets_FD[index].connected_time);
-        if (sockets_FD[index].clientFD != master_socket && elapsedTime > 1) {
-            std::cout << "Client with fd " << sockets_FD[index].clientFD << " Timed out" << sockets_FD[index].connected_time << "elapsedTime" << std::endl;
+        if (sockets_FD[index].clientFD != master_socket && elapsedTime > 10) {
+            std::cout << "Client with fd " << sockets_FD[index].clientFD << " Timed out" << std::endl;
             close(sockets_FD[index].clientFD);
             FD_CLR(sockets_FD[index].clientFD, &(this->read_fds));
             FD_CLR(sockets_FD[index].clientFD, &(this->master_fds));
             // delete &sockets_FD[index];
             sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
-            exit(EXIT_FAILURE);
+            // exit(EXIT_FAILURE);
         }        
+        
+    }
+}
+
+void Server::handle_already_existing_connection(void) {
+    //loop through this->read_fds if any slot is set then it's a client request
+    for (size_t index = 0; index < sockets_FD.size(); index++)
+    {
+        if(FD_ISSET(sockets_FD[index].clientFD, &(this->read_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
+            if(!receive(sockets_FD[index].clientFD)) {
+                break;
+            }
+        }
+        if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
+            send(sockets_FD[index].clientFD, index);
+            break;
+        }
     }
 }
 
@@ -212,7 +231,7 @@ void Server::select_accept_recv_send_handler(void) {
         tv.tv_sec = 1;
         tv.tv_usec = 0;
 
-        activity_fds = select(1024, &(this->read_fds), &(this->write_fds), NULL, &tv); 
+        activity_fds = select(highest_fd_val + 1, &(this->read_fds), &(this->write_fds), NULL, &tv); 
         if (activity_fds < 0){
             perror("select err: ");
             exit(EXIT_FAILURE);
@@ -223,21 +242,8 @@ void Server::select_accept_recv_send_handler(void) {
             accept_new_request();
         }
         else { //connection is already established
-            //loop through this->read_fds if any slot is set then it's a client request
-            for (size_t index = 0; index < sockets_FD.size(); index++)
-            {
-                if(FD_ISSET(sockets_FD[index].clientFD, &(this->read_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
-                    if(!receive(sockets_FD[index].clientFD)) {
-                        break;
-                    }
-                }
-                if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
-                    send(sockets_FD[index].clientFD, index);
-                    break;
-                }
-            }
+            handle_already_existing_connection();
         }
-        // usleep(5000);
     }
 }
 
