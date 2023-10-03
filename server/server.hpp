@@ -1,24 +1,15 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#include <vector>
-#include <algorithm>
-#include <cstring>
-#include <cstdlib>
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <iostream>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h> 
+#include "client.hpp"
 
 #define TRUE            1
 #define FALSE           0
 #define MAX_CONNECTIONS 42
 #define PORT            8080
 
+
+class Client;
 class Server
 {
     private:
@@ -28,7 +19,7 @@ class Server
     socklen_t       addrlen;
     int             master_socket;
     int             highest_fd_val;
-    std::vector<int>  sockets_FD;
+    std::vector<Client>  sockets_FD;
 
     fd_set              read_fds;
     fd_set              write_fds;
@@ -50,7 +41,8 @@ class Server
     int receive (int fd);
     void send (int fd, int index);
     void cleanFDSet (void);
-
+    void check_for_timeout (void);
+    void update_client_connected_time (int fd);
 };
 
 #endif
