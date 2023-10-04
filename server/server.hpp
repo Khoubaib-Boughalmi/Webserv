@@ -15,16 +15,19 @@ class Server
     private:
         /* data */
     public:
-    int             opt;
-    socklen_t       addrlen;
-    int             master_socket;
-    int             highest_fd_val;
-    std::vector<Client>  sockets_FD;
+    int                         opt;
+    socklen_t                   addrlen;
+    std::vector<int>            master_socket;
+    // int            master_socket;
+    int                         highest_fd_val;
+    std::vector<Client>         sockets_FD;
 
-    fd_set              read_fds;
-    fd_set              write_fds;
-    fd_set              master_fds;
-    struct sockaddr_in  address;  
+    fd_set                      read_fds;
+    fd_set                      write_fds;
+    fd_set                      master_fds;
+    std::vector<struct sockaddr_in>          addresses;  
+    std::vector<std::string>    ips;
+
     //default constructor copy constructor and assignment operator are deleted    
     Server();
     Server(const Server &copy);
@@ -32,7 +35,7 @@ class Server
     ~Server();
     void initialization_and_socket_creation (void);
     void accept_new_request (void);
-    void initialize_server_address (void);
+    void initialize_server_address (const char *);
     void bind_and_listen (void);
     void init_read_write_fd_set (void);
     void set_non_blocking_socket (int fd);

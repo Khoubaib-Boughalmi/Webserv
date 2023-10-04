@@ -1,7 +1,13 @@
 #include "server.hpp"
 
+
 Server::Server(/* args */)
 {
+
+    this->ips.push_back("192.168.0.172");
+    this->ips.push_back("127.0.0.1");
+    this->ips.push_back("127.0.0.2");
+    this->ips.push_back("127.0.0.3");
     Server::initialization_and_socket_creation();
     Server::bind_and_listen();
     Server::select_accept_recv_send_handler();
@@ -12,10 +18,17 @@ Server::~Server()
 }
 
 Server::Server(const Server &copy) {
+    std::cout << "copy const" << std::endl;
+
+    this->ips.push_back("192.168.0.172");
+    this->ips.push_back("127.0.0.1");
+    this->ips.push_back("127.0.0.2");
+    this->ips.push_back("127.0.0.3");
     *this = copy;
 }
 
 Server &Server::operator=(const Server &copy) {
+    std::cout << "copy const" << std::endl;
     if (this != &copy) {
         this->opt = copy.opt;
         this->addrlen = copy.addrlen;
@@ -25,8 +38,9 @@ Server &Server::operator=(const Server &copy) {
         this->read_fds = copy.read_fds;
         this->write_fds = copy.write_fds;
         this->master_fds = copy.master_fds;
-        this->address = copy.address;
+        this->addresses = copy.addresses;
     }
+    std::cout << "copy const" << std::endl;
     return *this;
 }
 
@@ -37,7 +51,7 @@ void Server::cleanFDSet(void) {
 }
 
 void Server::add_fd_to_master_set(int fd) {
-    Client *new_client = new Client(fd, this->master_socket);
+    Client *new_client = new Client(fd, this->master_socket[0]);
     sockets_FD.push_back(*new_client);
     FD_SET(fd, &(this->master_fds));
     if(fd > this->highest_fd_val)
@@ -50,56 +64,65 @@ void Server::set_non_blocking_socket(int fd) {
         perror("fcntl err: "); // to be changed to log
         exit(EXIT_FAILURE);
     }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) { //modify it to be compatible with the subject
         perror("fcntl err: ");
         exit(EXIT_FAILURE);
     }
 }
 
-void Server::initialize_server_address(void) {
-    this->address.sin_family = AF_INET;
-    this->address.sin_port = htons(PORT);
-    this->address.sin_addr.s_addr = INADDR_ANY;
-    this->addrlen = sizeof(this->address);
+void Server::initialize_server_address(const char *ip) {
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = inet_addr(ip);
+    address.sin_port = htons(PORT);
+    addrlen = sizeof(address);
+    this->addresses.push_back(address);
 }
 
 void Server::initialization_and_socket_creation (void) {
     //initialize this->sockets_FD
     this->opt = 1;
-    this->master_socket = 0;
+    std::cout << "TEST" << std::endl;
 
     Server::cleanFDSet();
     //create master socket
-    this->master_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (this->master_socket < 0) {
-        perror("Master socket creation err: ");
-        exit(EXIT_FAILURE);
+    for (size_t i = 0; i < this->ips.size(); i++)
+    {
+        this->master_socket.push_back(socket(AF_INET, SOCK_STREAM, 0));
+        if (this->master_socket[i] < 0) {
+            perror("Master socket creation err: ");
+            exit(EXIT_FAILURE);
+        }
+        // make master_fd address reusable
+        if (setsockopt(this->master_socket[i], SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0) {
+            perror("setsockopt err: ");
+            exit(EXIT_FAILURE);
+        }
+        // make master_fd non_blocking&add it to master_fds
+        set_non_blocking_socket(this->master_socket[i]);
+        add_fd_to_master_set(this->master_socket[i]);
+        //initialize server address struct sockaddr_in
+        initialize_server_address(this->ips[i].c_str());
     }
-    // make master_fd address reusable
-    if (setsockopt(this->master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0) {
-        perror("setsockopt err: ");
-        exit(EXIT_FAILURE);
-    }
-    // make master_fd non_blocking&add it to master_fds
-    set_non_blocking_socket(this->master_socket);
-    add_fd_to_master_set(this->master_socket);
-    //initialize server address struct sockaddr_in
-    initialize_server_address();
 }
 
 
 void Server::bind_and_listen(void) {
     //bind master_fd to address
-    if (bind(this->master_socket, (struct sockaddr *)&(this->address), sizeof(this->address)) < 0) {
-        perror("Bind err: ");
-        exit(EXIT_FAILURE);
+    for (size_t i = 0; i < this->ips.size(); i++)
+    {
+        if (bind(this->master_socket[i], (struct sockaddr *)&(this->addresses[i]), sizeof(this->addresses[i])) < 0) {
+            perror("Bind err: ");
+            exit(EXIT_FAILURE);
+        }
+        //listen to master_fd
+        if (listen(this->master_socket[i], 3) < 0) {
+            perror("Listen err: ");
+            exit(EXIT_FAILURE);
+        }
+        std::cout << "Listening on port: " << PORT << std::endl; 
     }
-    //listen to master_fd
-    if (listen(this->master_socket, 3) < 0) {
-        perror("Listen err: ");
-        exit(EXIT_FAILURE);
-    }
-    std::cout << "Listening on port: " << PORT << std::endl; 
+    
 }
 
 void Server::update_client_connected_time(int fd) {
@@ -120,8 +143,8 @@ void Server::init_read_write_fd_set(void) {
 }
 
 void Server::accept_new_request(void) {
-    // FD_CLR(this->master_socket, &(this->read_fds));
-    int client_fd = accept(this->master_socket, (struct sockaddr *) &(this->address), &(this->addrlen));
+    // FD_CLR(this->master_socket[0], &(this->read_fds));
+    int client_fd = accept(this->master_socket[0], (struct sockaddr *) &(this->addresses[0]), &(this->addrlen));
     if(client_fd < 0)
     {
         perror("Client Connection err: ");
@@ -193,7 +216,7 @@ void Server::check_for_timeout(void) {
     for (size_t index = 0; index < sockets_FD.size() ; index++)
     {
         double elapsedTime = (time(0) - sockets_FD[index].connected_time);
-        if (sockets_FD[index].clientFD != master_socket && elapsedTime > 10) {
+        if (sockets_FD[index].clientFD != this->master_socket[0] && elapsedTime > 10) {
             std::cout << "Client with fd " << sockets_FD[index].clientFD << " Timed out" << std::endl;
             close(sockets_FD[index].clientFD);
             FD_CLR(sockets_FD[index].clientFD, &(this->read_fds));
@@ -210,14 +233,14 @@ void Server::handle_already_existing_connection(void) {
     //loop through this->read_fds if any slot is set then it's a client request
     for (size_t index = 0; index < sockets_FD.size(); index++)
     {
-        if(FD_ISSET(sockets_FD[index].clientFD, &(this->read_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
+        if(FD_ISSET(sockets_FD[index].clientFD, &(this->read_fds)) && sockets_FD[index].clientFD != this->master_socket[0] ) {
             std::cout << "Connection FD" << sockets_FD[index].clientFD << std::endl;
 
             if(!receive(sockets_FD[index].clientFD)) {
                 break;
             }
         }
-        if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
+        if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && sockets_FD[index].clientFD != this->master_socket[0] ) {
             send(sockets_FD[index].clientFD, index);
             break;
         }
@@ -240,8 +263,8 @@ void Server::select_accept_recv_send_handler(void) {
             exit(EXIT_FAILURE);
         }
         check_for_timeout();
-        //if there is an activty in this->master_socket then it's a new request
-        if (FD_ISSET(this->master_socket, &(this->read_fds))) {
+        //if there is an activty in this->master_socket[0] then it's a new request
+        if (FD_ISSET(this->master_socket[0], &(this->read_fds))) {
             std::cout << "New Connection" << std::endl;
             accept_new_request();
         }
