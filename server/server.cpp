@@ -120,7 +120,7 @@ void Server::init_read_write_fd_set(void) {
 }
 
 void Server::accept_new_request(void) {
-    FD_CLR(this->master_socket, &(this->read_fds));
+    // FD_CLR(this->master_socket, &(this->read_fds));
     int client_fd = accept(this->master_socket, (struct sockaddr *) &(this->address), &(this->addrlen));
     if(client_fd < 0)
     {
@@ -142,6 +142,7 @@ int Server::receive(int fd) {
     char buff[1024] = {0};
 
     // FD_CLR(fd, &(this->read_fds));
+    std::cout << "Receiving request from client with fd: " << fd << std::endl;
     req = recv(fd, &buff, sizeof(buff), 0);
     //client disconnected
     if(!req) {
@@ -160,7 +161,7 @@ int Server::receive(int fd) {
     std::cout << "Request from client with fd: " << fd << std::endl;
     FD_SET(fd, &(this->write_fds));
     update_client_connected_time(fd);
-    // printf("Request: %s\n", buff);
+    printf("Request: %s\n", buff);
     return 1;
 }
 
@@ -210,6 +211,8 @@ void Server::handle_already_existing_connection(void) {
     for (size_t index = 0; index < sockets_FD.size(); index++)
     {
         if(FD_ISSET(sockets_FD[index].clientFD, &(this->read_fds)) && sockets_FD[index].clientFD != this->master_socket ) {
+            std::cout << "Connection FD" << sockets_FD[index].clientFD << std::endl;
+
             if(!receive(sockets_FD[index].clientFD)) {
                 break;
             }
@@ -239,6 +242,7 @@ void Server::select_accept_recv_send_handler(void) {
         check_for_timeout();
         //if there is an activty in this->master_socket then it's a new request
         if (FD_ISSET(this->master_socket, &(this->read_fds))) {
+            std::cout << "New Connection" << std::endl;
             accept_new_request();
         }
         else { //connection is already established
