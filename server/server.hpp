@@ -26,7 +26,7 @@ class Server
     fd_set                      write_fds;
     fd_set                      master_fds;
     std::vector<struct sockaddr_in>          addresses;  
-    std::vector<std::string>    ips;
+    std::vector<std::string>    ports;
 
     //default constructor copy constructor and assignment operator are deleted    
     Server();

@@ -4,10 +4,10 @@
 Server::Server(/* args */)
 {
 
-    this->ips.push_back("192.168.0.172");
-    this->ips.push_back("127.0.0.1");
-    this->ips.push_back("127.0.0.2");
-    this->ips.push_back("127.0.0.3");
+    this->ports.push_back("8080");
+    this->ports.push_back("8081");
+    this->ports.push_back("8082");
+    this->ports.push_back("8083");
     Server::initialization_and_socket_creation();
     Server::bind_and_listen();
     Server::select_accept_recv_send_handler();
@@ -20,10 +20,10 @@ Server::~Server()
 Server::Server(const Server &copy) {
     std::cout << "copy const" << std::endl;
 
-    this->ips.push_back("192.168.0.172");
-    this->ips.push_back("127.0.0.1");
-    this->ips.push_back("127.0.0.2");
-    this->ips.push_back("127.0.0.3");
+    this->ports.push_back("8080");
+    this->ports.push_back("8081");
+    this->ports.push_back("8082");
+    this->ports.push_back("8083");
     *this = copy;
 }
 
@@ -73,10 +73,13 @@ void Server::set_non_blocking_socket(int fd) {
 void Server::initialize_server_address(const char *ip) {
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr(ip);
-    address.sin_port = htons(PORT);
+    // address.sin_addr.s_addr = inet_addr(ip);
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(atoi(ip));
     addrlen = sizeof(address);
     this->addresses.push_back(address);
+    std::cout << "Server: " << ip << std::endl; 
+
 }
 
 void Server::initialization_and_socket_creation (void) {
@@ -86,7 +89,7 @@ void Server::initialization_and_socket_creation (void) {
 
     Server::cleanFDSet();
     //create master socket
-    for (size_t i = 0; i < this->ips.size(); i++)
+    for (size_t i = 0; i < this->ports.size(); i++)
     {
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         this->master_sockets.push_back(sock);
@@ -103,14 +106,14 @@ void Server::initialization_and_socket_creation (void) {
         set_non_blocking_socket(this->master_sockets[i]);
         add_fd_to_master_set(this->master_sockets[i]);
         //initialize server address struct sockaddr_in
-        initialize_server_address(this->ips[i].c_str());
+        initialize_server_address(this->ports[i].c_str());
     }
 }
 
 
 void Server::bind_and_listen(void) {
     //bind master_fd to address
-    for (size_t i = 0; i < this->ips.size(); i++)
+    for (size_t i = 0; i < this->ports.size(); i++)
     {
         if (bind(this->master_sockets[i], (struct sockaddr *)&(this->addresses[i]), sizeof(this->addresses[i])) < 0) {
             perror("Bind err: ");
@@ -121,9 +124,7 @@ void Server::bind_and_listen(void) {
             perror("Listen err: ");
             exit(EXIT_FAILURE);
         }
-        std::cout << "Listening on port: " << PORT << std::endl; 
-    }
-    
+    }    
 }
 
 void Server::update_client_connected_time(int fd) {
