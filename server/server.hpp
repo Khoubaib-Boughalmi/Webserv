@@ -17,7 +17,7 @@ class Server
     public:
     int                         opt;
     socklen_t                   addrlen;
-    std::vector<int>            master_socket;
+    std::vector<int>            master_sockets;
     // int            master_socket;
     int                         highest_fd_val;
     std::vector<Client>         sockets_FD;
@@ -34,7 +34,7 @@ class Server
     Server &operator=(const Server &copy);
     ~Server();
     void initialization_and_socket_creation (void);
-    void accept_new_request (void);
+    void accept_new_request (int active_server);
     void initialize_server_address (const char *);
     void bind_and_listen (void);
     void init_read_write_fd_set (void);
@@ -47,6 +47,8 @@ class Server
     void cleanFDSet (void);
     void check_for_timeout (void);
     void update_client_connected_time (int fd);
+    int check_ISSET_master_fds(void);
+    int check_if_fd_is_server(int fd);
 };
 
 #endif
