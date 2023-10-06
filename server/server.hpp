@@ -43,12 +43,16 @@ class Server
     void add_fd_to_master_set (int fd);
     void handle_already_existing_connection(void) ;
     int receive (int fd);
-    void send (int fd, int index);
+    void send (Client *client, int index);
     void cleanFDSet (void);
     void check_for_timeout (void);
     void update_client_connected_time (int fd);
     int check_ISSET_master_fds(void);
     int check_if_fd_is_server(int fd);
 };
+
+std::string process_and_load_file(std::string contentType) ;
+void initMimeTypes() ;
+std::string determine_mime_type(std::string req);
 
 #endif

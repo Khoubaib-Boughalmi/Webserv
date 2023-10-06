@@ -15,7 +15,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h> 
 #include <ctime>
+#include <sstream>
+#include "request.hpp"
 
+class Request;
 class Client
 {
     private:
@@ -30,6 +33,7 @@ class Client
         int disconnected;
         int clientFD;
         int serverFD;
+        Request clientRequest;
         std::time_t connected_time;
         struct sockaddr_in address;
 };

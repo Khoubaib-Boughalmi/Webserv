@@ -18,8 +18,6 @@ Server::~Server()
 }
 
 Server::Server(const Server &copy) {
-    std::cout << "copy const" << std::endl;
-
     this->ports.push_back("8080");
     this->ports.push_back("8081");
     this->ports.push_back("8082");
@@ -28,7 +26,6 @@ Server::Server(const Server &copy) {
 }
 
 Server &Server::operator=(const Server &copy) {
-    std::cout << "copy const" << std::endl;
     if (this != &copy) {
         this->opt = copy.opt;
         this->addrlen = copy.addrlen;
@@ -40,7 +37,6 @@ Server &Server::operator=(const Server &copy) {
         this->master_fds = copy.master_fds;
         this->addresses = copy.addresses;
     }
-    std::cout << "copy const" << std::endl;
     return *this;
 }
 
@@ -78,14 +74,11 @@ void Server::initialize_server_address(const char *ip) {
     address.sin_port = htons(atoi(ip));
     addrlen = sizeof(address);
     this->addresses.push_back(address);
-    std::cout << "Server: " << ip << std::endl; 
-
 }
 
 void Server::initialization_and_socket_creation (void) {
     //initialize this->sockets_FD
     this->opt = 1;
-    std::cout << "TEST" << std::endl;
 
     Server::cleanFDSet();
     //create master socket
@@ -107,6 +100,7 @@ void Server::initialization_and_socket_creation (void) {
         add_fd_to_master_set(this->master_sockets[i]);
         //initialize server address struct sockaddr_in
         initialize_server_address(this->ports[i].c_str());
+        std::cout << "Server is listening on port " << this->ports[i] << std::endl;
     }
 }
 
@@ -183,30 +177,44 @@ int Server::receive(int fd) {
             }
         }
     }
-    std::cout << "Request from client with fd: " << fd << std::endl;
+    
     FD_SET(fd, &(this->write_fds));
     update_client_connected_time(fd);
+     for (unsigned int index = 0; index < sockets_FD.size(); index++){
+        if(sockets_FD[index].clientFD == fd) {
+            sockets_FD[index].clientRequest = Request(buff);
+            sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request()));
+        }
+    }
     // printf("Request: %s\n", buff);
     return 1;
 }
 
-void Server::send(int fd, int index) {
+void Server::send(Client *clientInfo, int index) {
     int valread;
-    size_t total = 0;
-    std::string response = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\nContent-Type: text/html\r\nContent-Length: 350\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>Sample Page</title>\r\n<style>body {background-color: #f0f0f0;margin: 0;padding: 0;}h1 {color: blue;}p {color: red;}</style>\r\n</head>\r\n<body>\r\n<h1>Hello world!</h1>\r\n<p>This is a sample page.</p>\r\n<img src=\"https://images.pexels.com/photos/842711/pexels-photo-842711.jpeg\" alt=\"W3Schools.com\">\r\n</body>\r\n</html>\r\n";
+    std::ostringstream oss;
+    oss << process_and_load_file(clientInfo->clientRequest.get_content_type()).length();
+    
+    std::string content_length = oss.str();
+    // size_t total = 0;
+    std::string httpHeader = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\ncontent-type: ";
+    httpHeader += clientInfo->clientRequest.get_content_type();
+    httpHeader += "\r\nContent-Length: ";
+    httpHeader += content_length;
+    httpHeader += "\r\n\r\n";
+    std::string response = httpHeader + process_and_load_file(clientInfo->clientRequest.get_content_type());
     size_t bytesleft = response.length();
-
     //send may not send all bytes at once so we loop until all bytes are sent
-    while (total < response.length())
-    {
-        if((valread = ::send(fd, response.c_str() + total, bytesleft , 0)) < 0){
+    // while (total < response.length())
+    // {
+        if((valread = ::send(clientInfo->clientFD, response.c_str() , bytesleft , 0)) < 0){
                 perror("Send err: ");
                 exit(EXIT_FAILURE);
         }
-        if (valread == -1) { break; }
-        total += valread;
-        bytesleft -= valread;
-    }
+    //     if (valread == -1) { break; }
+    //     total += valread;
+    //     bytesleft -= valread;
+    // }
 
     // delete &sockets_FD[index];
     (void)index;
@@ -250,7 +258,7 @@ void Server::handle_already_existing_connection(void) {
             }
         }
         if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && !check_if_fd_is_server(sockets_FD[index].clientFD) ) {
-            send(sockets_FD[index].clientFD, index);
+            send(&sockets_FD[index] , index);
             break;
         }
     }

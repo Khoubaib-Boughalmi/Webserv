@@ -4,7 +4,9 @@ CFLAGS= -std=c++98 -Wall -Wextra -Werror
 
 SRCS = 	./main.cpp \
 		./server/server.cpp \
-		./server/client.cpp
+		./server/client.cpp \
+		./server/utils.cpp \
+		./server/request.cpp \
 
 %.o:%.cpp
 	${CC} ${CFLAGS} -c $^ -o $@

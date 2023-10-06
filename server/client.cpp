@@ -26,6 +26,7 @@ Client &Client::operator=(const Client &copy) {
         this->address = copy.address;
         this->connected_time = copy.connected_time;
     }
+
     return *this;
 }
 
