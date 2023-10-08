@@ -16,6 +16,10 @@
 #include <netinet/in.h> 
 #include <ctime>
 #include <sstream>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <dirent.h>
+
 #include "request.hpp"
 
 class Request;

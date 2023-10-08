@@ -183,7 +183,7 @@ int Server::receive(int fd) {
      for (unsigned int index = 0; index < sockets_FD.size(); index++){
         if(sockets_FD[index].clientFD == fd) {
             sockets_FD[index].clientRequest = Request(buff);
-            sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request()));
+            sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request())); //set content type
         }
     }
     // printf("Request: %s\n", buff);
@@ -196,7 +196,7 @@ void Server::send(Client *clientInfo, int index) {
     oss << process_and_load_file(clientInfo->clientRequest.get_content_type()).length();
     
     std::string content_length = oss.str();
-    // size_t total = 0;
+    size_t total = 0;
     std::string httpHeader = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\ncontent-type: ";
     httpHeader += clientInfo->clientRequest.get_content_type();
     httpHeader += "\r\nContent-Length: ";
@@ -205,16 +205,16 @@ void Server::send(Client *clientInfo, int index) {
     std::string response = httpHeader + process_and_load_file(clientInfo->clientRequest.get_content_type());
     size_t bytesleft = response.length();
     //send may not send all bytes at once so we loop until all bytes are sent
-    // while (total < response.length())
-    // {
+    while (total < response.length())
+    {
         if((valread = ::send(clientInfo->clientFD, response.c_str() , bytesleft , 0)) < 0){
                 perror("Send err: ");
                 exit(EXIT_FAILURE);
         }
-    //     if (valread == -1) { break; }
-    //     total += valread;
-    //     bytesleft -= valread;
-    // }
+        if (valread == -1) { break; }
+        total += valread;
+        bytesleft -= valread;
+    }
 
     // delete &sockets_FD[index];
     (void)index;
@@ -248,8 +248,81 @@ void Server::check_for_timeout(void) {
     }
 }
 
+void send_cgibin_response(int fd, int index) {
+    (void)index;
+    int status;
+    int child_fd;
+    char buff[1024] = {0};
+    int pipefd[2];
+
+    std::string response;
+    std::string directory_path = "./var/www/html/cgi-bin";
+
+    if(pipe(pipefd) < 0) {
+        perror("pipe err: ");
+        exit(EXIT_FAILURE);
+    }
+    
+    DIR* directory = opendir(directory_path.c_str());
+     if (!directory) {
+        perror("opendir err: ");
+        closedir(directory);
+        exit(EXIT_FAILURE);
+    }
+    child_fd = fork();
+    if(!child_fd) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
+        std::string path = directory_path + "/get";
+        char *args[] = {
+            (char *)path.c_str(),
+            (char *)"hello",
+            (char *)"world",
+            NULL
+        };
+        if (execv(args[0], args) < 0) {
+            perror("execv err: ");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else {
+        close(pipefd[1]);
+        waitpid(child_fd, &status, 0);
+        while (read(pipefd[0], buff, sizeof(buff)) != 0) {
+            response += buff;
+            memset(buff, 0, sizeof(buff));
+        }
+        close(pipefd[0]);
+        std::ostringstream oss;
+        oss << response.length();
+        std::string content_length = oss.str();
+        size_t total = 0;
+        std::string httpHeader = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\ncontent-type: text/html\r\nContent-Length: ";
+        httpHeader += content_length;
+        httpHeader += "\r\n\r\n";
+        response = httpHeader + response;
+        size_t bytesleft = response.length();
+        while (total < response.length())
+        {
+            if((status = ::send(fd, response.c_str() , bytesleft , 0)) < 0){
+                    perror("Send err: ");
+                    exit(EXIT_FAILURE);
+            }
+            if (status == -1) { break; }
+            total += status;
+            bytesleft -= status;
+        }
+        // delete &sockets_FD[index];
+        // close(fd);
+        // sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
+    }
+}
+
 void Server::handle_already_existing_connection(void) {
     //loop through this->read_fds if any slot is set then it's a client request
+    int is_cgibin = 1;
     for (size_t index = 0; index < sockets_FD.size(); index++)
     {
         if(FD_ISSET(sockets_FD[index].clientFD, &(this->read_fds)) && !check_if_fd_is_server(sockets_FD[index].clientFD) ) {
@@ -258,7 +331,10 @@ void Server::handle_already_existing_connection(void) {
             }
         }
         if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && !check_if_fd_is_server(sockets_FD[index].clientFD) ) {
-            send(&sockets_FD[index] , index);
+            if (is_cgibin) 
+                send_cgibin_response(sockets_FD[index].clientFD, index);
+            else
+                send(&sockets_FD[index] , index);
             break;
         }
     }
