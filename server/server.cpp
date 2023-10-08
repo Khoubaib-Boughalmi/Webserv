@@ -1,27 +1,20 @@
 #include "server.hpp"
 
-
-Server::Server(/* args */)
+Server::Server(char *config_file)
 {
-
-    this->ports.push_back("8080");
-    this->ports.push_back("8081");
-    this->ports.push_back("8082");
-    this->ports.push_back("8083");
-    Server::initialization_and_socket_creation();
+    std::vector<std::string> servers;
+    int servers_nb = 0;
+    std::string conf;
+    read_file(config_file, conf, servers_nb);
+    parse_file(conf, servers_nb, servers);
+    Server::initialization_and_socket_creation(servers, servers.size());
     Server::bind_and_listen();
     Server::select_accept_recv_send_handler();
 }
 
-Server::~Server()
-{
-}
+Server::~Server() {}
 
 Server::Server(const Server &copy) {
-    this->ports.push_back("8080");
-    this->ports.push_back("8081");
-    this->ports.push_back("8082");
-    this->ports.push_back("8083");
     *this = copy;
 }
 
@@ -47,7 +40,7 @@ void Server::cleanFDSet(void) {
 }
 
 void Server::add_fd_to_master_set(int fd) {
-    Client *new_client = new Client(fd, this->master_sockets[0]); //serverFD not important for now
+    Client *new_client = new Client(fd, this->master_sockets[0].GetSock()); //serverFD not important for now
     sockets_FD.push_back(*new_client);
     FD_SET(fd, &(this->master_fds));
     if(fd > this->highest_fd_val)
@@ -60,7 +53,7 @@ void Server::set_non_blocking_socket(int fd) {
         perror("fcntl err: "); // to be changed to log
         exit(EXIT_FAILURE);
     }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) { //modify it to be compatible with the subject
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) { // modify it to be compatible with the subject
         perror("fcntl err: ");
         exit(EXIT_FAILURE);
     }
@@ -71,50 +64,60 @@ void Server::initialize_server_address(const char *ip) {
     address.sin_family = AF_INET;
     // address.sin_addr.s_addr = inet_addr(ip);
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(atoi(ip));
+    address.sin_port = htons(atoi(ip)); //
     addrlen = sizeof(address);
     this->addresses.push_back(address);
 }
 
-void Server::initialization_and_socket_creation (void) {
+void Server::initialization_and_socket_creation (std::vector<std::string>& hosts, size_t hosts_nb) {
     //initialize this->sockets_FD
     this->opt = 1;
-
+    //
+    std::vector<std::string>::iterator  it = hosts.begin();
+    Host    tmp;
     Server::cleanFDSet();
     //create master socket
-    for (size_t i = 0; i < this->ports.size(); i++)
+    // Number of servers already known
+    // this->master_sockets.reserve(hosts_n);
+    for (size_t i = 0; i < hosts_nb; i++)
     {
         int sock = socket(AF_INET, SOCK_STREAM, 0);
-        this->master_sockets.push_back(sock);
-        if (this->master_sockets[i] < 0) {
-            perror("Master socket creation err: ");
-            exit(EXIT_FAILURE);
+        // 
+        // Host tmp(*it) // throws BadSocketException
+        CreateHost(*it, sock, tmp);
+        // tmp.print();
+        this->master_sockets.push_back(tmp);
+        if (this->master_sockets[i].GetSock() < 0) {
+            perror("Master socket creation err: "); //
+            exit(EXIT_FAILURE); //
         }
         // make master_fd address reusable
-        if (setsockopt(this->master_sockets[i], SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0) {
+        if (setsockopt(this->master_sockets[i].GetSock(), SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0) {
             perror("setsockopt err: ");
             exit(EXIT_FAILURE);
         }
         // make master_fd non_blocking&add it to master_fds
-        set_non_blocking_socket(this->master_sockets[i]);
-        add_fd_to_master_set(this->master_sockets[i]);
-        //initialize server address struct sockaddr_in
-        initialize_server_address(this->ports[i].c_str());
-        std::cout << "Server is listening on port " << this->ports[i] << std::endl;
+        set_non_blocking_socket(this->master_sockets[i].GetSock());
+        add_fd_to_master_set(this->master_sockets[i].GetSock());
+        initialize_server_address(std::to_string(tmp.GetPort()).c_str());
+        std::cout << "Server is listening on port " << tmp.GetPort() << std::endl;
+        if (it != hosts.end()) {
+            ++it;
+            tmp.clear();
+        }
     }
 }
 
-
 void Server::bind_and_listen(void) {
     //bind master_fd to address
-    for (size_t i = 0; i < this->ports.size(); i++)
+    for (size_t i = 0; i < master_sockets.size(); i++)
     {
-        if (bind(this->master_sockets[i], (struct sockaddr *)&(this->addresses[i]), sizeof(this->addresses[i])) < 0) {
+        if (bind(this->master_sockets[i].GetSock(), (struct sockaddr *)&(this->addresses[i]), sizeof(this->addresses[i])) < 0) {
             perror("Bind err: ");
             exit(EXIT_FAILURE);
         }
         //listen to master_fd
-        if (listen(this->master_sockets[i], 10) < 0) {
+        if (listen(this->master_sockets[i].GetSock(), 10) < 0) {
             perror("Listen err: ");
             exit(EXIT_FAILURE);
         }
@@ -125,7 +128,7 @@ void Server::update_client_connected_time(int fd) {
     for (unsigned int index = 0; index < sockets_FD.size(); index++){
         if(sockets_FD[index].clientFD == fd) {
             sockets_FD[index].update_connected_time();
-            break;
+            break ;
         }
     }
 }
@@ -190,6 +193,13 @@ int Server::receive(int fd) {
     return 1;
 }
 
+void    SetErrorPage(const int status) {
+    std::map<int, std::string>  error_pages;
+    std::string 404;
+    error_pages[404] = 404;
+
+}
+
 void Server::send(Client *clientInfo, int index) {
     int valread;
     std::ostringstream oss;
@@ -225,7 +235,7 @@ void Server::send(Client *clientInfo, int index) {
 int Server::check_if_fd_is_server(int fd) {
     for (size_t i = 0; i < this->master_sockets.size(); i++)
     {
-        if(fd == master_sockets[i]) 
+        if(fd == master_sockets[i].GetSock()) 
             return 1;
     }
     return (0);
@@ -267,8 +277,8 @@ void Server::handle_already_existing_connection(void) {
 int Server::check_ISSET_master_fds() {
     for (size_t i = 0; i < this->master_sockets.size(); i++)
     {
-        if(FD_ISSET(this->master_sockets[i], &(this->read_fds))) 
-            return master_sockets[i];
+        if(FD_ISSET(this->master_sockets[i].GetSock(), &(this->read_fds))) 
+            return master_sockets[i].GetSock();
     }
     return (0);
 }
@@ -283,7 +293,7 @@ void Server::select_accept_recv_send_handler(void) {
         tv.tv_sec = 1;
         tv.tv_usec = 0;
 
-        activity_fds = select(highest_fd_val + 1, &(this->read_fds), &(this->write_fds), NULL, &tv); 
+        activity_fds = select(1024, &(this->read_fds), &(this->write_fds), NULL, &tv); 
         if (activity_fds < 0){
             perror("select err: ");
             exit(EXIT_FAILURE);
@@ -299,5 +309,3 @@ void Server::select_accept_recv_send_handler(void) {
         }
     }
 }
-
-

@@ -2,6 +2,7 @@
 #define SERVER_HPP
 
 #include "client.hpp"
+#include "Host.hpp"
 
 #define TRUE            1
 #define FALSE           0
@@ -9,15 +10,18 @@
 #define PORT            8080
 
 
+
 class Client;
 class Server
 {
     private:
+    Server();
         /* data */
     public:
     int                         opt;
     socklen_t                   addrlen;
-    std::vector<int>            master_sockets;
+    // std::vector<int>            master_sockets;
+    std::vector<Host>           master_sockets;
     // int            master_socket;
     int                         highest_fd_val;
     std::vector<Client>         sockets_FD;
@@ -29,11 +33,11 @@ class Server
     std::vector<std::string>    ports;
 
     //default constructor copy constructor and assignment operator are deleted    
-    Server();
+    Server(char*);
     Server(const Server &copy);
     Server &operator=(const Server &copy);
     ~Server();
-    void initialization_and_socket_creation (void);
+    void initialization_and_socket_creation (std::vector<std::string>&, size_t);
     void accept_new_request (int active_server);
     void initialize_server_address (const char *);
     void bind_and_listen (void);

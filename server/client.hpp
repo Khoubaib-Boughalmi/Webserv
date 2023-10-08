@@ -18,6 +18,16 @@
 #include <sstream>
 #include "request.hpp"
 
+struct AllowedMethods
+{
+    bool    _get;
+    bool    _post;
+    bool    _put;
+    bool    _patch;
+    bool    _delete;
+    bool    _option;
+};
+
 class Request;
 class Client
 {
