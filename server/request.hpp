@@ -6,6 +6,8 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <dirent.h>
+#include <unistd.h>
 #include "Response.hpp"
 
 class Request

@@ -29,7 +29,6 @@ std::string Response::getStatusMessage(int statusCode) const {
 }
 
 void Response::sendResponse(const int clientFD) const {
-    (void)clientFD;
     std::string response;
     response = "HTTP/1.1 ";
     response.append(std::to_string(statusCode));

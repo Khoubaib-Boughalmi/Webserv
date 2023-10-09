@@ -192,48 +192,7 @@ int Server::receive(int fd) {
     return (1);
 }
 
-
-#include <dirent.h>
-
-// void    HandleDelete(std::string& uri, std::string& response) {
-//     // check if uri is directory
-//     DIR*    dir;
-//     if (access(uri.c_str(), F_OK) == 0) {
-//         dir = opendir(uri.c_str());
-//         // if dir is NULL then the request is file
-//         if (dir == NULL) {
-//                 if (remove(uri.c_str()) == 0)
-//                     SetResponse(response, "", "No Content", 204);
-//                 else
-//                     SetResponse(response, "", "Internal Server Error", 500);
-//         }
-//         else {
-//             char bck = uri.back();
-//             if (bck == '/') {
-//                 if (access(uri.c_str(), W_OK) == 0) {
-//                     if (remove(uri.c_str()) == 0)
-//                         SetResponse(response, "", "No Content", 204);
-//                     else
-//                         SetResponse(response, "", "Internal Server Error", 500);
-//                 }
-//                 else
-//                     SetResponse(response, "", "Forbidden", 403);
-//             }
-//             else
-//                 SetResponse(response, "", "Conflict", 409);
-//             closedir(dir);
-//         }
-//     }
-//     else
-//         SetResponse(response, "404.html", "Not Found", 404);
-// }
-
-
-void Server::send(Client *clientInfo, int index) {
-    (void)index;
-    // std::cout << clientInfo->clientRequest.get_request() << std::endl;
-    std::cout << clientInfo->clientRequest.get_body() << std::endl;
-    std::cout << clientInfo->clientRequest.get_method() << std::endl;
+void Server::send(Client *clientInfo) {
     clientInfo->clientRequest.parse_request(clientInfo->clientFD);
 }
 
@@ -273,7 +232,7 @@ void Server::handle_already_existing_connection(void) {
             }
         }
         if(FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && !check_if_fd_is_server(sockets_FD[index].clientFD) ) {
-            send(&sockets_FD[index] , index);
+            send(&sockets_FD[index]);
             break;
         }
     }
