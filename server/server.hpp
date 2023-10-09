@@ -3,6 +3,7 @@
 
 #include "client.hpp"
 #include "Host.hpp"
+#include "Response.hpp"
 
 #define TRUE            1
 #define FALSE           0

@@ -5,11 +5,10 @@ CFLAGS= -std=c++98 -Wall -Wextra -Werror -fsanitize=address -g
 SRCS = 	./main.cpp \
 		./server/server.cpp \
 		./server/client.cpp \
-		./server/utils.cpp \
 		./server/request.cpp \
 		./server/Host.cpp \
 		./server/ParserUtils.cpp \
-
+		./server/Response.cpp \
 
 %.o:%.cpp
 	${CC} ${CFLAGS} -c $^ -o $@

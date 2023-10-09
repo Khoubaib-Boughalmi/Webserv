@@ -153,7 +153,7 @@ void Server::accept_new_request(int active_server) {
     set_non_blocking_socket(client_fd);
     add_fd_to_master_set(client_fd);
     update_client_connected_time(client_fd);
-        //update the connected time
+    //update the connected time
     //no available slots in this->sockets_FD
     if(sockets_FD.size() >= MAX_CONNECTIONS)
         std::cout << "Server is overloaded try later.." << std::endl; //should be sent to client
@@ -161,7 +161,7 @@ void Server::accept_new_request(int active_server) {
 
 int Server::receive(int fd) {
     int req;
-    char buff[1024] = {0};
+    char buff[700000] = {0};
 
     // FD_CLR(fd, &(this->read_fds));
     std::cout << "Receiving request from client with fd: " << fd << std::endl;
@@ -186,50 +186,66 @@ int Server::receive(int fd) {
      for (unsigned int index = 0; index < sockets_FD.size(); index++){
         if(sockets_FD[index].clientFD == fd) {
             sockets_FD[index].clientRequest = Request(buff);
-            sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request()));
+            // sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request()));
         }
     }
-    // printf("Request: %s\n", buff);
-    return 1;
+    return (1);
 }
 
-void    SetErrorPage(const int status) {
-    std::map<int, std::string>  error_pages;
-    std::string 404;
-    error_pages[404] = 404;
+std::string readHtmlFile(const std::string& filename)
+{
+    std::ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        return "";
+    }
 
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
 }
+
+#include <dirent.h>
+
+// void    HandleDelete(std::string& uri, std::string& response) {
+//     // check if uri is directory
+//     DIR*    dir;
+//     if (access(uri.c_str(), F_OK) == 0) {
+//         dir = opendir(uri.c_str());
+//         // if dir is NULL then the request is file
+//         if (dir == NULL) {
+//                 if (remove(uri.c_str()) == 0)
+//                     SetResponse(response, "", "No Content", 204);
+//                 else
+//                     SetResponse(response, "", "Internal Server Error", 500);
+//         }
+//         else {
+//             char bck = uri.back();
+//             if (bck == '/') {
+//                 if (access(uri.c_str(), W_OK) == 0) {
+//                     if (remove(uri.c_str()) == 0)
+//                         SetResponse(response, "", "No Content", 204);
+//                     else
+//                         SetResponse(response, "", "Internal Server Error", 500);
+//                 }
+//                 else
+//                     SetResponse(response, "", "Forbidden", 403);
+//             }
+//             else
+//                 SetResponse(response, "", "Conflict", 409);
+//             closedir(dir);
+//         }
+//     }
+//     else
+//         SetResponse(response, "404.html", "Not Found", 404);
+// }
 
 void Server::send(Client *clientInfo, int index) {
-    int valread;
-    std::ostringstream oss;
-    oss << process_and_load_file(clientInfo->clientRequest.get_content_type()).length();
-    
-    std::string content_length = oss.str();
-    // size_t total = 0;
-    std::string httpHeader = "HTTP/1.1 200 OK\r\nDate: Sat, 24 Sep 2023 12:00:00 GMT\r\ncontent-type: ";
-    httpHeader += clientInfo->clientRequest.get_content_type();
-    httpHeader += "\r\nContent-Length: ";
-    httpHeader += content_length;
-    httpHeader += "\r\n\r\n";
-    std::string response = httpHeader + process_and_load_file(clientInfo->clientRequest.get_content_type());
-    size_t bytesleft = response.length();
-    //send may not send all bytes at once so we loop until all bytes are sent
-    // while (total < response.length())
-    // {
-        if((valread = ::send(clientInfo->clientFD, response.c_str() , bytesleft , 0)) < 0){
-                perror("Send err: ");
-                exit(EXIT_FAILURE);
-        }
-    //     if (valread == -1) { break; }
-    //     total += valread;
-    //     bytesleft -= valread;
-    // }
-
-    // delete &sockets_FD[index];
     (void)index;
-    // close(fd);
-    // sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
+    // std::cout << clientInfo->clientRequest.get_request() << std::endl;
+    // std::cout << clientInfo->clientRequest.get_body() << std::endl;
+    Response    response;
+    response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+    response.sendResponse(clientInfo->clientFD);
 }
 
 int Server::check_if_fd_is_server(int fd) {

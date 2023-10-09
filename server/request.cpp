@@ -20,24 +20,51 @@ Request::Request() {
 
 Request::Request(std::string req) {
     this->req = req;
-    this->method = "";
-    this->path = "";
-    this->protocol = "";
-    this->host = "";
-    this->connection = "";
-    this->cache_control = "";
-    this->user_agent = "";
-    this->accept = "";
-    this->accept_encoding = "";
-    this->accept_language = "";
-    this->cookie = "";
-    this->content_length = "";
-    this->content_type = "";
-    this->body = "";
+    bool isBody = false;
+    std::stringstream requestStream(req);
+    std::string line;
+
+    while (std::getline(requestStream, line)) {
+        if (line.empty()) {
+            isBody = true;
+            continue ;
+        }
+
+        if (isBody) {
+            this->body.append(line + "\n");
+        } else {
+            size_t pos = line.find(':');
+            if (pos != std::string::npos) {
+                std::string headerName = line.substr(0, pos);
+                std::string headerValue = line.substr(pos + 2);
+
+                if (headerName == "Host") {
+                    this->host = headerValue;
+                } else if (headerName == "Connection") {
+                    this->connection = headerValue;
+                } else if (headerName == "Cache-Control") {
+                    this->cache_control = headerValue;
+                } else if (headerName == "User-Agent") {
+                    this->user_agent = headerValue;
+                } else if (headerName == "Accept") {
+                    this->accept = headerValue;
+                } else if (headerName == "Accept-Encoding") {
+                    this->accept_encoding = headerValue;
+                } else if (headerName == "Accept-Language") {
+                    this->accept_language = headerValue;
+                } else if (headerName == "Cookie") {
+                    this->cookie = headerValue;
+                } else if (headerName == "Content-Length") {
+                    this->content_length = headerValue;
+                } else if (headerName == "Content-Type") {
+                    this->content_type = headerValue;
+                }
+            }
+        }
+    }
 }
 
-Request::~Request() {
-}
+Request::~Request() {}
 
 Request::Request(const Request &copy) {
     *this = copy;
@@ -179,4 +206,3 @@ void Request::set_content_type(std::string content_type) {
 void Request::set_body(std::string body) {
     this->body = body;
 }
-
