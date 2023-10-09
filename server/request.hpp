@@ -4,7 +4,9 @@
 #include <cstring>
 #include <stdio.h>
 #include <iostream>
-# include <sstream>
+#include <sstream>
+#include <fstream>
+#include "Response.hpp"
 
 class Request
 {
@@ -61,9 +63,8 @@ class Request
         void set_content_type(std::string content_type);
         void set_body(std::string body);
 
-        void parse_request(char*);
+        void parse_request(const int);
         void print_request(void);
 };
-
 
 #endif

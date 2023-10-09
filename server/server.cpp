@@ -192,17 +192,6 @@ int Server::receive(int fd) {
     return (1);
 }
 
-std::string readHtmlFile(const std::string& filename)
-{
-    std::ifstream file(filename.c_str());
-    if (!file.is_open()) {
-        return "";
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
 
 #include <dirent.h>
 
@@ -239,13 +228,13 @@ std::string readHtmlFile(const std::string& filename)
 //         SetResponse(response, "404.html", "Not Found", 404);
 // }
 
+
 void Server::send(Client *clientInfo, int index) {
     (void)index;
     // std::cout << clientInfo->clientRequest.get_request() << std::endl;
-    // std::cout << clientInfo->clientRequest.get_body() << std::endl;
-    Response    response;
-    response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
-    response.sendResponse(clientInfo->clientFD);
+    std::cout << clientInfo->clientRequest.get_body() << std::endl;
+    std::cout << clientInfo->clientRequest.get_method() << std::endl;
+    clientInfo->clientRequest.parse_request(clientInfo->clientFD);
 }
 
 int Server::check_if_fd_is_server(int fd) {

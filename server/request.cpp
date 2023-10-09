@@ -24,6 +24,11 @@ Request::Request(std::string req) {
     std::stringstream requestStream(req);
     std::string line;
 
+    if (std::getline(requestStream, line)) {
+        std::istringstream lineStream(line);
+        lineStream >> method >> path >> protocol;
+    }
+
     while (std::getline(requestStream, line)) {
         if (line.empty()) {
             isBody = true;
@@ -62,6 +67,80 @@ Request::Request(std::string req) {
             }
         }
     }
+}
+
+std::string readHtmlFile(const std::string& filename)
+{
+    std::ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        return "";
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+#include <dirent.h>
+# include <unistd.h>
+
+void    HandleDelete(std::string& uri, const int clientFD) {
+    // check if uri is directory
+    DIR*    dir;
+    Response response;
+    uri = uri.substr(1, uri.length());
+    if (access(uri.c_str(), F_OK) == 0) {
+        dir = opendir(uri.c_str());
+        // if dir is NULL then the request is file
+        if (dir == NULL) {
+                if (remove(uri.c_str()) == 0)
+                {
+                    response.setStatus(204).setBody(readHtmlFile("")).setContentType(getMimeType("html"));
+                    response.sendResponse(clientFD);
+                    // SetResponse(response, "", "No Content", 204);
+                }
+                else
+                {
+                    // SetResponse(response, "", "Internal Server Error", 500);
+                }
+        }
+        else {
+            char bck = uri.back();
+            if (bck == '/') {
+                if (access(uri.c_str(), W_OK) == 0) {
+                    if (remove(uri.c_str()) == 0) {
+                        // SetResponse(response, "", "No Content", 204);
+                    }
+                    else{
+                        // SetResponse(response, "", "Internal Server Error", 500);
+                    }
+                }
+                else {
+                    // SetResponse(response, "", "Forbidden", 403);
+                }
+            }
+            else {
+                // SetResponse(response, "", "Conflict", 409);
+            }
+            closedir(dir);
+        }
+    }
+    else
+    {
+        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+        response.sendResponse(clientFD);
+    }
+        // SetResponse(response, "404.html", "Not Found", 404);
+}
+
+void    Request::parse_request(const int clientFD) {
+    if (method == "DELETE")
+    {
+        HandleDelete(path, clientFD);
+    }
+    Response    response;
+    response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+    response.sendResponse(clientFD);
 }
 
 Request::~Request() {}
