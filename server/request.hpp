@@ -66,7 +66,7 @@ class Request
         void set_content_length(std::string content_length);
         void set_content_type(std::string content_type);
         void set_body(std::string body);
-
+        void fillBodyFromPostRequest(const std::string& request);
         void print_request(void);
 };
 

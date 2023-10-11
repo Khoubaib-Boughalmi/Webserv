@@ -3,10 +3,22 @@
 
 Request::Request() {}
 
+void Request::fillBodyFromPostRequest(const std::string &request)
+{
+    // Find the position of the double newline separator
+    size_t bodyStartPos = request.find("\r\n\r\n");
+    if (bodyStartPos != std::string::npos)
+    {
+        // Extract the body from the request string
+        std::string requestBody = request.substr(bodyStartPos + 4);
+        // Set the body member of the Request object
+        this->body = requestBody;
+    }
+}
+
 Request::Request(std::string req)
 {
     this->req = req;
-    bool isBody = false;
     std::stringstream requestStream(req);
     std::string line;
 
@@ -18,64 +30,34 @@ Request::Request(std::string req)
 
     while (std::getline(requestStream, line))
     {
-        if (line.empty())
+        size_t pos = line.find(':');
+        if (pos != std::string::npos)
         {
-            isBody = true;
-            continue;
-        }
+            std::string headerName = line.substr(0, pos);
+            std::string headerValue = line.substr(pos + 2);
 
-        if (isBody)
-            this->body.append(line + "\n");
-        else
-        {
-            size_t pos = line.find(':');
-            if (pos != std::string::npos)
-            {
-                std::string headerName = line.substr(0, pos);
-                std::string headerValue = line.substr(pos + 2);
-
-                if (headerName == "Servers")
-                {
-                    this->host = headerValue;
-                }
-                else if (headerName == "Connection")
-                {
-                    this->connection = headerValue;
-                }
-                else if (headerName == "Cache-Control")
-                {
-                    this->cache_control = headerValue;
-                }
-                else if (headerName == "User-Agent")
-                {
-                    this->user_agent = headerValue;
-                }
-                else if (headerName == "Accept")
-                {
-                    this->accept = headerValue;
-                }
-                else if (headerName == "Accept-Encoding")
-                {
-                    this->accept_encoding = headerValue;
-                }
-                else if (headerName == "Accept-Language")
-                {
-                    this->accept_language = headerValue;
-                }
-                else if (headerName == "Cookie")
-                {
-                    this->cookie = headerValue;
-                }
-                else if (headerName == "Content-Length")
-                {
-                    this->content_length = headerValue;
-                }
-                else if (headerName == "Content-Type")
-                {
-                    this->content_type = headerValue;
-                }
-            }
+            if (headerName == "Servers")
+                this->host = headerValue;
+            else if (headerName == "Connection")
+                this->connection = headerValue;
+            else if (headerName == "Cache-Control")
+                this->cache_control = headerValue;
+            else if (headerName == "User-Agent")
+                this->user_agent = headerValue;
+            else if (headerName == "Accept")
+                this->accept = headerValue;
+            else if (headerName == "Accept-Encoding")
+                this->accept_encoding = headerValue;
+            else if (headerName == "Accept-Language")
+                this->accept_language = headerValue;
+            else if (headerName == "Cookie")
+                this->cookie = headerValue;
+            else if (headerName == "Content-Length")
+                this->content_length = headerValue;
+            else if (headerName == "Content-Type")
+                this->content_type = headerValue;
         }
+        fillBodyFromPostRequest(this->req);
     }
 }
 
@@ -178,10 +160,6 @@ bool matchUriWithPath(const std::string &uri, const std::vector<Routes> &routes,
     return false;
 }
 
-// void    HandleGet(std::string& uri, Client* clientInfo, Response& response) {
-
-// }
-
 std::string getRedirect(const std::vector<Routes> &routes)
 {
     for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
@@ -218,12 +196,108 @@ bool isMethodAllowed(const std::string &method, const std::string &requestedPath
         const std::string &path = route.getPath().substr(1);
         if (path == requestedPath)
         {
-            bool isAllowed = (std::find(route.getMethods().begin(), route.getMethods().end(), method) != route.getMethods().end());
-            return isAllowed;
+            std::vector<std::string> methods = route.getMethods();
+            std::vector<std::string>::iterator it = std::find(methods.begin(), methods.end(), method);
+            if (it != methods.end())
+                return true;
         }
     }
     return false;
 }
+
+bool is_directory(const std::string &uri)
+{
+    DIR *dir;
+
+    dir = opendir(uri.c_str());
+    if (dir == NULL)
+        return false;
+    closedir(dir);
+    return (true);
+}
+
+bool has_cgi(const std::string &uri)
+{
+    if (uri == "cgi-bin")
+        return (true);
+    return false;
+}
+
+bool directoryHasIndexFile(const std::string &directoryPath)
+{
+    DIR *dir = opendir(directoryPath.c_str());
+
+    if (dir)
+    {
+        struct dirent *entry;
+
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (entry->d_type == DT_REG && std::strcmp(entry->d_name, "index.html") == 0)
+            {
+                closedir(dir);
+                return true;
+            }
+        }
+        closedir(dir);
+    }
+    return false;
+}
+
+bool directory_listing(const std::string &requestedPath, std::vector<Routes> &routes)
+{
+    for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
+    {
+        const Routes &route = *it;
+        const std::string &path = route.getPath().substr(1);
+        if (path == requestedPath)
+        {
+            if (route.getDirectoryListing())
+                return true;
+            return false;
+        }
+    }
+    return false;
+}
+
+void HandleGet(std::string uri, std::vector<Routes> &routes, Response &response)
+{
+    if (!is_valid_location(uri))
+    {
+        response.setStatus(404)
+            .setBody(readHtmlFile("static/404.html"))
+            .setContentType(getMimeType("html"));
+    }
+    else if (is_directory(uri))
+    {
+        std::cout << "DIR" << std::endl;
+        if (directoryHasIndexFile(uri))
+            std::cout << "Has index file\n";
+        else
+        {
+            std::cout << "Has Not index file\n";
+            if (directory_listing(uri, routes))
+                std::cout << "Directory Listing true\n";
+            else
+            {
+                response.setStatus(403)
+                    .setBody(readHtmlFile("static/404.html"))
+                    .setContentType(getMimeType("html"));
+            }
+        }
+    }
+    else
+    {
+        if (has_cgi(uri))
+            std::cout << "CGI" << std::endl;
+        else
+            response.setStatus(200)
+                .setBody(readHtmlFile("static/404.html"))
+                .setContentType(getMimeType("html"));
+    }
+}
+
+void HandlePost() {}
 
 void parse_request(Request &reqeust, Client *clientInfo) // TODO: check request for inprintable characters
 {
@@ -249,18 +323,18 @@ void parse_request(Request &reqeust, Client *clientInfo) // TODO: check request 
             .setContentType(getMimeType("html"));
     else if (is_uri_have_redirect(uri))
         HandleRedirect(uri, response, clientInfo);
+    else if (!isMethodAllowed(reqeust.get_method(), uri, routes))
+        response.setStatus(405).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
     else if (reqeust.get_method() == "GET")
+        HandleGet(uri, routes, response);
+    else if (reqeust.get_method() == "POST")
     {
-        if (isMethodAllowed(reqeust.get_method(), uri, routes))
-            response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
-        else
-            response.setStatus(405).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+        HandlePost();
+        response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
     }
     else if (reqeust.get_method() == "DELETE")
         HandleDelete(uri, response);
-    // else if (reqeust.get_method() == "GET")
-    //     HandleGet(uri, clientInfo, response);
-    // response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+    response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
     response.sendResponse(clientInfo->clientFD);
 }
 

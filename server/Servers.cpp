@@ -87,6 +87,10 @@ const std::vector<std::string>  Routes::getMethods() const {
     return (this->methods);
 }
 
+const bool& Routes::getDirectoryListing() const {
+    return (this->directory_listing);
+}
+
 Servers::~Servers() {}
 
 //
