@@ -1,4 +1,4 @@
-# include "Host.hpp"
+# include "Servers.hpp"
 
 std::string TrimSpaces(const std::string& input) {
     size_t start = 0;
@@ -38,7 +38,7 @@ void    split_server_names(std::vector<std::string>& res, std::string input) {
     }
 }
 
-void    setup_server_names(std::string& line, Host& server) {
+void    setup_server_names(std::string& line, Servers& server) {
     line = TrimSpaces(line);
     std::map<std::string, std::string>  res;
     std::vector<std::string>    s_names;
@@ -255,7 +255,7 @@ void    fill_routes(Routes& route, std::string routes) {
     }
 }
 
-void    setup_routes(std::vector<std::string>   rts_vector, Host& server) {
+void    setup_routes(std::vector<std::string>   rts_vector, Servers& server) {
     Routes  route;
     std::vector<std::string>::iterator  it = rts_vector.begin();
 
@@ -267,7 +267,7 @@ void    setup_routes(std::vector<std::string>   rts_vector, Host& server) {
     }
 }
 
-void    CreateHost(std::string server_config, int sock, Host& server) {
+void    CreateServer(std::string server_config, int sock, Servers& server) {
     std::stringstream   ss(server_config);
     std::string         line;
     std::string         tmp;
@@ -327,7 +327,4 @@ void    CreateHost(std::string server_config, int sock, Host& server) {
         }
     }
     server.SetSock(sock);
-    // return (server);
-    // servers_vector.push_back(server);
-    // server.clear(); //
 }

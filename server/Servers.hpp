@@ -28,6 +28,9 @@ class   Routes {
         void    SetUploadDirectory(const std::string&);
         void    SetRedirectUrl(const std::string&);
 
+        const std::string& getPath() const;
+        const std::string&  getRedirectUrl() const;
+        const std::vector<std::string>  getMethods() const;
         // TODO : add getters
         void    clear();
 
@@ -45,10 +48,10 @@ class   Routes {
         std::string                 redirect_url;
 };
 
-class   Host {
+class   Servers {
     public:
-        Host();
-        ~Host();
+        Servers();
+        ~Servers();
         void    SetHost(const std::string);
         void    SetPort(int);
         void    SetDefault(bool);
@@ -84,7 +87,7 @@ class   Host {
 
 void        split_line(std::map<std::string, std::string>&, std::string , std::string);
 void        split_server_names(std::vector<std::string>&, std::string);
-void        setup_server_names(std::string&, Host&);
+void        setup_server_names(std::string&, Servers&);
 bool        find_word(const std::string&, const std::string&);
 void        extract_server(std::string &, std::string &);
 void        parse_file(std::string , int, std::vector<std::string> &);
@@ -95,6 +98,6 @@ void        split_methods(std::vector<std::string>&, std::string);
 void        setup_methods(std::vector<std::string>&, std::string&);
 void        extract_routes(std::vector<std::string>&, std::string);
 void        fill_routes(Routes&, std::string);
-void        setup_routes(std::vector<std::string>, Host&);
-void        CreateHost(std::string, int, Host&);
+void        setup_routes(std::vector<std::string>, Servers&);
+void        CreateServer(std::string, int, Servers&);
 std::string TrimSpaces(const std::string&);

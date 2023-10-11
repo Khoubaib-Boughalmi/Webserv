@@ -1,17 +1,17 @@
-# include "Host.hpp"
+# include "Servers.hpp"
 
-Host::Host() {}
+Servers::Servers() {}
 
-void   Host::SetHost(const std::string server_host) { host = server_host; }
-const std::string& Host::getHost() const { return host; }
+void   Servers::SetHost(const std::string server_host) { host = server_host; }
+const std::string& Servers::getHost() const { return host; }
 
-void    Host::SetPort(int server_port) { port = server_port; }
-const int& Host::GetPort() const { return port; }
+void    Servers::SetPort(int server_port) { port = server_port; }
+const int& Servers::GetPort() const { return port; }
 
-void    Host::SetDefault(bool default_server) { is_default = default_server; }
-const bool&    Host::GetDefault() const { return is_default; }
+void    Servers::SetDefault(bool default_server) { is_default = default_server; }
+const bool&    Servers::GetDefault() const { return is_default; }
 
-void    Host::SetServerNames(std::vector<std::string>& s_names) {
+void    Servers::SetServerNames(std::vector<std::string>& s_names) {
     std::vector<std::string>::iterator  it = s_names.begin();
     while (it != s_names.end()) {
         serverNames.push_back(*it);
@@ -19,29 +19,29 @@ void    Host::SetServerNames(std::vector<std::string>& s_names) {
     }
 }
 
-const std::vector<std::string>& Host::getServerNames() const { return serverNames; }
+const std::vector<std::string>& Servers::getServerNames() const { return serverNames; }
 
-void    Host::SetErrorPages(std::vector<std::string>& err_pages) {
+void    Servers::SetErrorPages(std::vector<std::string>& err_pages) {
      std::vector<std::string>::iterator  it = err_pages.begin();
     while (it != err_pages.end()) {
         error_pages.push_back(*it);
         ++it;
     }
 }
-const std::vector<std::string>& Host::GetErrorPages() const { return error_pages; }
+const std::vector<std::string>& Servers::GetErrorPages() const { return error_pages; }
 
-void    Host::SetClientBodyLimit(const std::string& bodyLimit) { clientBodyLimit = bodyLimit; }
-const std::string&  Host::GetClientBodyLimit() const { return clientBodyLimit; }
+void    Servers::SetClientBodyLimit(const std::string& bodyLimit) { clientBodyLimit = bodyLimit; }
+const std::string&  Servers::GetClientBodyLimit() const { return clientBodyLimit; }
 
 
-void    Host::SetRoutes(Routes& route) {
+void    Servers::SetRoutes(Routes& route) {
     routes.push_back(route);
 }
-std::vector<Routes>    Host::GetRoutes() const { return routes; }
+std::vector<Routes>    Servers::GetRoutes() const { return routes; }
 
-void    Host::print() {
+void    Servers::print() {
     std::cout << "\x1b[1;33m╔═════════════════════════════════════════╗\x1b[0m\n";
-    std::cout << "\x1b[1;33m║          Host Configuration       ║\x1b[0m\n";
+    std::cout << "\x1b[1;33m║          Servers Configuration       ║\x1b[0m\n";
     std::cout << "\x1b[1;33m╠═════════════════════════════════════════╣\x1b[0m\n";
     std::cout << "\x1b[1;33m║ \x1b[1;34mHost               : \x1b[0m" << host << "\n";
     std::cout << "\x1b[1;33m║ \x1b[1;34mPort               : \x1b[0m" << port << "\n";
@@ -62,7 +62,7 @@ void    Host::print() {
     std::cout << "\x1b[1;33m╚═════════════════════════════════════════╝\x1b[0m\n";
 }
 
-void    Host::clear() {
+void    Servers::clear() {
     host.clear();
     port = 0;
     is_default = false;
@@ -72,15 +72,22 @@ void    Host::clear() {
     routes.clear();
 }
 
-void    Host::SetSock(int s) {
+void    Servers::SetSock(int s) {
     sock = s;
 }
 
-const int& Host::GetSock() const {
+const int& Servers::GetSock() const {
     return sock;
 }
 
-Host::~Host() {}
+const std::string&  Routes::getRedirectUrl() const {
+    return (this->redirect_url);
+}
+const std::vector<std::string>  Routes::getMethods() const {
+    return (this->methods);
+}
+
+Servers::~Servers() {}
 
 //
 Routes::Routes() {}
@@ -108,6 +115,10 @@ void    Routes::SetUploadEnabled(bool up_en) { upload_enabled = up_en; }
 void    Routes::SetUploadDirectory(const std::string& up_dir) { upload_directory = up_dir; }
 
 void    Routes::SetRedirectUrl(const std::string& r_url) { redirect_url = r_url; }
+
+const std::string& Routes::getPath() const {
+    return path;
+}
 
 void    Routes::clear() {
     path.clear();

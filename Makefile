@@ -6,7 +6,7 @@ SRCS = 	./main.cpp \
 		./server/server.cpp \
 		./server/client.cpp \
 		./server/request.cpp \
-		./server/Host.cpp \
+		./server/Servers.cpp \
 		./server/ParserUtils.cpp \
 		./server/Response.cpp \
 

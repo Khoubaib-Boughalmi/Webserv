@@ -21,10 +21,18 @@ Response& Response::setContentType(const std::string& contentType) {
 std::string Response::getStatusMessage(int statusCode) const {
     switch (statusCode) {
         case 200: return " OK";
+        case 201: return " Created";
+        case 204: return " No Content";
+        case 301: return " Moved Permanently";
         case 400: return " Bad Request";
+        case 403: return " Forbidden";
         case 404: return " Not Found";
+        case 405: return " Method Not Allowed";
+        case 413: return " Request Entity Too Large";
+        case 414: return " Request-URI Too Long";
         case 500: return " Internal Server Error";
-        default:  return " Unknown Status";
+        case 501: return " Not Implemented";
+        default:  return "Unknown Status";
     }
 }
 
@@ -41,7 +49,6 @@ void Response::sendResponse(const int clientFD) const {
     response.append(contentType);
     response.append("\r\n\r\n");
     response.append(responseBody);
-    // std::cout << response << std::endl;
     send(clientFD, response.c_str() , response.length() , 0);
 }
 

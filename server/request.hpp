@@ -9,6 +9,8 @@
 #include <dirent.h>
 #include <unistd.h>
 #include "Response.hpp"
+#include <stdexcept> 
+#include "Servers.hpp"
 
 class Request
 {
@@ -65,7 +67,6 @@ class Request
         void set_content_type(std::string content_type);
         void set_body(std::string body);
 
-        void parse_request(const int);
         void print_request(void);
 };
 

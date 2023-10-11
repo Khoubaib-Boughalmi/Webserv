@@ -17,15 +17,18 @@
 #include <ctime>
 #include <sstream>
 #include "request.hpp"
+#include "Servers.hpp"
 
-class Request;
+
+class Servers;
+class   Request;
 class Client
 {
     private:
         /* data */
     public:
         Client();
-        Client(int clientFD, int serverFD);
+        Client(int clientFD, int serverFD, Servers& server);
         Client(const Client &copy);
         Client &operator=(const Client &copy);
         ~Client();
@@ -33,9 +36,10 @@ class Client
         int disconnected;
         int clientFD;
         int serverFD;
+        Servers server;
         Request clientRequest;
         std::time_t connected_time;
         struct sockaddr_in address;
 };
-
+void    parse_request(Request& reqeust, Client* clientInfo);
 #endif

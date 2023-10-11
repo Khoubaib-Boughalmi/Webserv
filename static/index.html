@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>File Upload Form</title>
 </head>
 <body>
-    <h1>Hello world</h1>
-    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Id expedita dolor neque totam vero velit suscipit maiores sit, fugiat culpa ex voluptate dolorem alias molestias excepturi enim. Neque, fugit consectetur.</p>
+    <h1>File Upload Form</h1>
+    <form action="upload.php" method="POST" enctype="multipart/form-data">
+        <label for="file">Select a file to upload:</label>
+        <input type="file" name="file" id="file"><!-- You can specify the file types allowed using the accept attribute -->
+        <br>
+        <input type="submit" value="Upload">
+    </form>
 </body>
 </html>

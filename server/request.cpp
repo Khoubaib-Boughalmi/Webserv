@@ -1,23 +1,7 @@
 #include "request.hpp"
+#include "client.hpp"
 
-Request::Request()
-{
-    this->req = "";
-    this->method = "";
-    this->path = "";
-    this->protocol = "";
-    this->host = "";
-    this->connection = "";
-    this->cache_control = "";
-    this->user_agent = "";
-    this->accept = "";
-    this->accept_encoding = "";
-    this->accept_language = "";
-    this->cookie = "";
-    this->content_length = "";
-    this->content_type = "";
-    this->body = "";
-}
+Request::Request() {}
 
 Request::Request(std::string req)
 {
@@ -37,7 +21,7 @@ Request::Request(std::string req)
         if (line.empty())
         {
             isBody = true;
-            continue ;
+            continue;
         }
 
         if (isBody)
@@ -50,7 +34,7 @@ Request::Request(std::string req)
                 std::string headerName = line.substr(0, pos);
                 std::string headerValue = line.substr(pos + 2);
 
-                if (headerName == "Host")
+                if (headerName == "Servers")
                 {
                     this->host = headerValue;
                 }
@@ -143,51 +127,141 @@ void HandleDelete(std::string &uri, Response &response)
             closedir(dir);
         }
     }
-    else 
+    else
         response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
 }
 
-bool    is_valid_method(const std::string& method) {
+bool is_valid_method(const std::string &method)
+{
     return (method == "GET" || method == "POST" || method == "DELETE");
 }
 
-bool    is_uri_lenght_valid(const std::string& uri) {
+bool is_uri_lenght_valid(const std::string &uri)
+{
     return (uri.length() < 2048);
 }
 
-bool    is_uri_size_valid(const std::string& uri) {
+bool is_uri_size_valid(const std::string &uri)
+{
     return ((static_cast<double>(uri.size()) / (1024 * 1024)) < 10);
 }
 
-bool    is_valid_location(const std::string& uri) {
+bool is_valid_location(const std::string &uri)
+{
     if (access(uri.c_str(), F_OK) == 0)
         return (true);
     return (false);
 }
 
-void    HandleGet(std::string& uri, Response& response) {
-    (void)uri;
-    (void)response;
+bool is_uri_have_redirect(const std::string &uri)
+{
+    return (uri == "redirect");
 }
 
-void Request::parse_request(const int clientFD)
+bool matchUriWithPath(const std::string &uri, const std::vector<Routes> &routes, bool redirect)
+{
+    for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
+    {
+        const Routes &route = *it;
+        const std::string &path = route.getPath();
+        if (redirect)
+        {
+            if (path == "/redirect")
+                return true;
+        }
+        else
+        {
+            if (uri == path)
+                return true;
+        }
+    }
+    return false;
+}
+
+// void    HandleGet(std::string& uri, Client* clientInfo, Response& response) {
+
+// }
+
+std::string getRedirect(const std::vector<Routes> &routes)
+{
+    for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
+    {
+        const Routes &route = *it;
+        const std::string &path = route.getPath();
+        if (path == "/redirect")
+        {
+            return route.getRedirectUrl();
+        }
+    }
+    return "";
+}
+
+void HandleRedirect(const std::string &uri, Response &response, Client *clientInfo)
+{
+    if (matchUriWithPath(uri, clientInfo->server.GetRoutes(), true))
+    {
+        std::string redirect_url = getRedirect(clientInfo->server.GetRoutes());
+        if (redirect_url.empty())
+            response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+        else
+            response.setStatus(301).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+    }
+    else
+        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+}
+
+bool isMethodAllowed(const std::string &method, const std::string &requestedPath, std::vector<Routes> &routes)
+{
+    for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
+    {
+        const Routes &route = *it;
+        const std::string &path = route.getPath().substr(1);
+        if (path == requestedPath)
+        {
+            bool isAllowed = (std::find(route.getMethods().begin(), route.getMethods().end(), method) != route.getMethods().end());
+            return isAllowed;
+        }
+    }
+    return false;
+}
+
+void parse_request(Request &reqeust, Client *clientInfo) // TODO: check request for inprintable characters
 {
     Response response;
+    std::vector<Routes> routes = clientInfo->server.GetRoutes();
+    std::string uri = reqeust.get_path().substr(1);
 
-    path = path.substr(1);
-    if (!is_valid_method(method))
-        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
-    else if (!is_uri_lenght_valid(path))
-        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
-    else if (!is_uri_size_valid(path))
-        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
-    else if (!is_valid_location(path))
-        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
-    else if (method == "DELETE")
-        HandleDelete(path, response);
-    else if (method == "GET")
-        HandleGet(path, response);
-    response.sendResponse(clientFD);
+    if (!is_valid_method(reqeust.get_method()))
+        response.setStatus(501)
+            .setBody(readHtmlFile("static/501.html"))
+            .setContentType(getMimeType("html"));
+    else if (!is_uri_lenght_valid(uri))
+        response.setStatus(414)
+            .setBody(readHtmlFile("static/414.html"))
+            .setContentType(getMimeType("html"));
+    else if (!is_uri_size_valid(uri))
+        response.setStatus(413)
+            .setBody(readHtmlFile("static/413.html"))
+            .setContentType(getMimeType("html"));
+    else if (!is_valid_location(uri))
+        response.setStatus(404)
+            .setBody(readHtmlFile("static/404.html"))
+            .setContentType(getMimeType("html"));
+    else if (is_uri_have_redirect(uri))
+        HandleRedirect(uri, response, clientInfo);
+    else if (reqeust.get_method() == "GET")
+    {
+        if (isMethodAllowed(reqeust.get_method(), uri, routes))
+            response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+        else
+            response.setStatus(405).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+    }
+    else if (reqeust.get_method() == "DELETE")
+        HandleDelete(uri, response);
+    // else if (reqeust.get_method() == "GET")
+    //     HandleGet(uri, clientInfo, response);
+    // response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+    response.sendResponse(clientInfo->clientFD);
 }
 
 Request::~Request() {}
