@@ -205,11 +205,14 @@ bool isMethodAllowed(const std::string &method, const std::string &requestedPath
         if (path == requestedPath)
         {
             std::vector<std::string> methods = route.getMethods();
-            std::vector<std::string>::iterator it = std::find(methods.begin(), methods.end(), method);
-            if (it != methods.end())
-                return true;
+            std::vector<std::string>::iterator it ;
+            for (it = methods.begin(); it != methods.end(); it++) {
+                if(*it == method)
+                    return true;
+            }            
         }
     }
+    std::cout << "EEEEEEND  \n";
     return false;
 }
 
@@ -422,27 +425,27 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     std::cout << "BEFORE: " << request.get_path() << std::endl;
     std::string uri = request.get_path().substr(1);
 
-    // if (!is_valid_method(request.get_method()))
-    //     response.setStatus(501)
-    //         .setBody(readHtmlFile("static/501.html"))
-    //         .setContentType(getMimeType("html"));
-    // else if (!is_uri_lenght_valid(uri))
-    //     response.setStatus(414)
-    //         .setBody(readHtmlFile("static/414.html"))
-    //         .setContentType(getMimeType("html"));
-    // else if (!is_uri_size_valid(uri))
-    //     response.setStatus(413)
-    //         .setBody(readHtmlFile("static/413.html"))
-    //         .setContentType(getMimeType("html"));
+    if (!is_valid_method(request.get_method()))
+        response.setStatus(501)
+            .setBody(readHtmlFile("static/501.html"))
+            .setContentType(getMimeType("html"));
+    else if (!is_uri_lenght_valid(uri))
+        response.setStatus(414)
+            .setBody(readHtmlFile("static/414.html"))
+            .setContentType(getMimeType("html"));
+    else if (!is_uri_size_valid(uri))
+        response.setStatus(413)
+            .setBody(readHtmlFile("static/413.html"))
+            .setContentType(getMimeType("html"));
     // else if (!is_valid_location(uri))
     //     response.setStatus(404)
     //         .setBody(readHtmlFile("static/404.html"))
     //         .setContentType(getMimeType("html"));
-    // else if (is_uri_have_redirect(uri))
-    //     HandleRedirect(uri, response, clientInfo);
-    // else if (!isMethodAllowed(request.get_method(), uri, routes))
-    //     response.setStatus(405).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
-    if (request.get_method() == "GET")
+    else if (is_uri_have_redirect(uri))
+        HandleRedirect(uri, response, NULL, clientInfo);
+    else if (!isMethodAllowed(request.get_method(), uri, routes))
+        response.setStatus(405).setBody(readHtmlFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
+    else if (request.get_method() == "GET")
     {
         HandleGet(uri, routes, request, response);
     }
