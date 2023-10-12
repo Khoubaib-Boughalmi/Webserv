@@ -9,6 +9,7 @@ SRCS = 	./main.cpp \
 		./server/Servers.cpp \
 		./server/ParserUtils.cpp \
 		./server/Response.cpp \
+		./server/Content.cpp \
 
 %.o:%.cpp
 	${CC} ${CFLAGS} -c $^ -o $@
