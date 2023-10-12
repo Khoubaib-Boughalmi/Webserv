@@ -37,25 +37,25 @@ Request::Request(std::string req)
             std::string headerValue = line.substr(pos + 2);
 
             if (headerName == "Servers")
-                this->host = headerValue;
+                this->host = TrimSpaces(headerValue);
             else if (headerName == "Connection")
-                this->connection = headerValue;
+                this->connection = TrimSpaces(headerValue);
             else if (headerName == "Cache-Control")
-                this->cache_control = headerValue;
+                this->cache_control = TrimSpaces(headerValue);
             else if (headerName == "User-Agent")
-                this->user_agent = headerValue;
+                this->user_agent = TrimSpaces(headerValue);
             else if (headerName == "Accept")
-                this->accept = headerValue;
+                this->accept = TrimSpaces(headerValue);
             else if (headerName == "Accept-Encoding")
-                this->accept_encoding = headerValue;
+                this->accept_encoding = TrimSpaces(headerValue);
             else if (headerName == "Accept-Language")
-                this->accept_language = headerValue;
+                this->accept_language = TrimSpaces(headerValue);
             else if (headerName == "Cookie")
-                this->cookie = headerValue;
+                this->cookie = TrimSpaces(headerValue);
             else if (headerName == "Content-Length")
-                this->content_length = headerValue;
+                this->content_length = TrimSpaces(headerValue);
             else if (headerName == "Content-Type")
-                this->content_type = headerValue;
+                this->content_type = TrimSpaces(headerValue);
         }
         fillBodyFromPostRequest(this->req);
     }
@@ -130,12 +130,12 @@ bool is_uri_size_valid(const std::string &uri)
 
 bool is_valid_location(const std::string &uri)
 {
-if (uri != "login" && uri != "favicon.ico" && !uri.empty())
-        return (false);
-    return (true);
-    // if (access(uri.c_str(), F_OK) == 0)
-    //     return (true);
-    // return (false);
+    // if (uri != "login" && uri != "favicon.ico" && !uri.empty())
+    //     return (false);
+    // return (true);
+    if (access(uri.c_str(), F_OK) == 0 || uri.empty())
+        return (true);
+    return (false);
 }
 
 bool is_uri_have_redirect(const std::string &uri)
@@ -183,12 +183,12 @@ void HandleRedirect(const std::string &uri, Response &response, Client *clientIn
     {
         std::string redirect_url = getRedirect(clientInfo->server.GetRoutes());
         if (redirect_url.empty())
-            response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+            response.setStatus(404).setBody(readHtmlFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
         else
-            response.setStatus(301).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+            response.setStatus(301).setBody(readHtmlFile("static/error_pages/301.html")).setContentType(getMimeType("html"));
     }
     else
-        response.setStatus(404).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+        response.setStatus(404).setBody(readHtmlFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
 }
 
 bool isMethodAllowed(const std::string &method, const std::string &requestedPath, std::vector<Routes> &routes)
@@ -263,27 +263,76 @@ bool directory_listing(const std::string &requestedPath, std::vector<Routes> &ro
     return false;
 }
 
-int check_cookies(std::string cookie) {
-    if(cookie.empty())
+int check_cookies(std::string cookie)
+{
+    write(1, "hello world\n", 13);
+
+    if (cookie.empty())
         return (0);
-    std::cout << "Cookie:" << cookie.c_str() << std::endl;
-    std::string cookieValue = cookie.substr(cookie.find("=") + 1, 6);
+    std::cout << "Cookie: " << cookie << std::endl;
+    std::string cookieValue = cookie.substr(cookie.find("=") + 1, cookie.length());
+    std::cout << "hello world: -" << cookieValue << "-" << std::endl;
     // cookieValue = "abc123";
-    if(cookieValue == "abc123")
+    if (cookieValue == "abc123")
     {
         std::cout << "Cookie OK" << std::endl;
+        write(1, "hello world\n", 13);
         return (1);
     }
+    write(1, "hello world\n", 13);
     std::cout << "Cookie DEAAAAD" << std::endl;
     return (0);
+}
+
+std::string generateDirectoryListing(const std::string &directory)
+{
+    std::stringstream html;
+    html << "<html>"
+            "<head>"
+            "<title>Directory Listing</title>"
+            "</head>"
+            "<body style=\"font-family: Arial, sans-serif; background-color: #f3f3f3; padding: 20px; margin: 0;\">"
+            "<h1 style=\"font-size: 24px; margin-bottom: 20px;\">Directory Listing</h1>"
+            "<ul style=\"list-style-type: none; padding: 0;\">";
+
+    DIR *dir;
+    struct dirent *entry;
+
+    if ((dir = opendir(directory.c_str())) != NULL)
+    {
+        while ((entry = readdir(dir)) != NULL)
+        {
+            std::string filename(entry->d_name);
+
+            // Skip the current and parent directory entries
+            if (filename != "." && filename != "..")
+            {
+                html << "<li style=\"margin-bottom: 10px; background-color: #fff; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); padding: 10px; display: flex; align-items: center;\">"
+                     << filename
+                     << "</li>";
+            }
+        }
+
+        closedir(dir);
+    }
+    else
+    {
+        html << "Error: Unable to open directory";
+    }
+
+    html << "</ul>"
+            "</body>"
+            "</html>";
+    return html.str();
 }
 
 void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Response &response)
 {
     if (!is_valid_location(uri))
     {
-        response.setStatus(404)
-            .setBody(readHtmlFile("static/404.html"))
+        std::cout << "Not found\n";
+        response.setStatus(404).setLocation("HAHAHA")
+            .setBody(readHtmlFile("static/error_pages/404.html"))
             .setContentType(getMimeType("html"));
     }
     else if (is_directory(uri))
@@ -294,8 +343,13 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Re
         else
         {
             std::cout << "Has Not index file\n";
-            if (directory_listing(uri, routes))
+            if (directory_listing(uri, routes)) {
                 std::cout << "Directory Listing true\n";
+                response.setStatus(200).setLocation(uri)
+                    .setBody(generateDirectoryListing(uri))
+                    .setContentType(getMimeType("html"));
+                return ;
+            }
             else
             {
                 response.setStatus(403)
@@ -304,19 +358,23 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Re
             }
         }
     }
-    else {
-        if(uri == "login") {
+    else
+    {
+        if (uri == "login")
+        {
+            std::cout << "HAMZAAAA " << uri << std::endl;
             if (check_cookies(request.get_cookie()))
-                response.setStatus(301).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+                response.setStatus(301).setLocation("asdasdasd").setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
             else
-                response.setStatus(200).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
-
+                response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
         }
-        else {
-            if(check_cookies(request.get_cookie()))
-                response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+        else
+        {
+            std::cout << "heeere" <<  uri << std::endl;
+            if (check_cookies(request.get_cookie()))
+                response.setStatus(200).setLocation("/").setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
             else
-                response.setStatus(301).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+                response.setStatus(301).setLocation("/login").setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
         }
     }
     // else
@@ -328,25 +386,26 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Re
     //             .setBody(readHtmlFile("static/404.html"))
     //             .setContentType(getMimeType("html"));
     // }
-
 }
 
-int HandlePost(Request &request, Response *response, Client *clientInfo) {
+int HandlePost(Request &request, Response *response, Client *clientInfo)
+{
     (void)clientInfo;
     (void)response;
-    if(request.get_body().empty())
+    if (request.get_body().empty())
         return (0);
     std::string username = request.get_body().substr(9, request.get_body().find("&") - 9);
     std::string password = request.get_body().substr(request.get_body().find("&") + 10, request.get_body().length() - 1);
     std::cout << username << std::endl;
     std::cout << password << std::endl;
-    if(username == "khoubaib" && password == "123456789") {
+    if (username == "khoubaib" && password == "123456789")
+    {
         std::string cookie;
-        cookie = "sessionToken=abc123; Domain=localhost; Path=/; Secure; HttpOnly;  Expires=Wed, 09 Jun 2024 10:18:14 GMT" ;
-        std::cout << "OK" << std::endl;
-        response->setStatus(200).setCookie(cookie).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+        cookie = "sessionToken=abc123; Domain=localhost; Path=/; Secure; HttpOnly;  Expires=Wed, 09 Jun 2024 10:18:14 GMT";
+        response->setStatus(301).setLocation("/").setCookie(cookie).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
         return (1);
-    }else 
+    }
+    else
         response->setStatus(401).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
     return (0);
 }

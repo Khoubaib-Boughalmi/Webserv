@@ -23,6 +23,11 @@ Response& Response::setCookie(const std::string& cookie) {
     return *this;
 }
 
+Response& Response::setLocation(const std::string& location) {
+    this->location = location;
+    return *this;
+}
+
 std::string Response::getStatusMessage(int statusCode) const {
     switch (statusCode) {
         case 200: return " OK";
@@ -47,6 +52,9 @@ void Response::sendResponse(const int clientFD) const {
     response.append(std::to_string(statusCode));
     response.append(getStatusMessage(statusCode));
     response.append("\r\n");
+    response.append("Location: ");
+    response.append(location);
+    response.append("\r\n");
     response.append("Content-Length: ");
     response.append(std::to_string(responseBody.size()));
     response.append("\r\n");
@@ -57,6 +65,7 @@ void Response::sendResponse(const int clientFD) const {
     response.append(contentType);
     response.append("\r\n\r\n");
     response.append(responseBody);
+    std::cout << response << std::endl;
     send(clientFD, response.c_str() , response.length() , 0);
 }
 

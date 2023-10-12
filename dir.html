@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directory Listing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Directory Listing</h1>
+    <ul>
+        <?php
+        $dir = ".";
+        $files = scandir($dir);
+        foreach ($files as $file) {
+            if ($file !== '.' && $file !== '..') {
+                echo '<li><a href="' . $file . '">' . $file . '</a></li>';
+            }
+        }
+        ?>
+    </ul>
+</body>
+</html>

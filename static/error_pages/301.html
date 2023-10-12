@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>301 - Moved Permanently</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
+        }
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        a {
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <h1>301 - Moved Permanently</h1>
+    <p>The requested resource has been permanently moved to a new location.</p>
+    <p>You will be redirected to the new location shortly, or you can click the following link to go there now:</p>
+    <a href="https://www.new-location.com">New Location</a>
+    
+    <script>
+        setTimeout(function() {
+            window.location.href = "https://www.new-location.com";
+        }, 5000); // Redirect after 5 seconds
+    </script>
+</body>
+</html>
