@@ -166,6 +166,7 @@ int Server::receive(int fd) {
     // FD_CLR(fd, &(this->read_fds));
     std::cout << "Receiving request from client with fd: " << fd << std::endl;
     req = recv(fd, &buff, sizeof(buff), 0);
+    std::cout << buff << std::endl;
     //client disconnected
     if(!req) {
         std::cout << "Client with fd " << fd << " Disconnected" << std::endl;

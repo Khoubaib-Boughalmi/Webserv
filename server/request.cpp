@@ -177,15 +177,20 @@ std::string getRedirect(const std::vector<Routes> &routes)
     return "";
 }
 
-void HandleRedirect(const std::string &uri, Response &response, Client *clientInfo)
+void HandleRedirect(std::string &uri, Response &response, std::string redirect_uri, Client *clientInfo)
 {
-    if (matchUriWithPath(uri, clientInfo->server.GetRoutes(), true))
+    if (clientInfo && matchUriWithPath(uri, clientInfo->server.GetRoutes(), true))
     {
         std::string redirect_url = getRedirect(clientInfo->server.GetRoutes());
+        uri = redirect_url;
         if (redirect_url.empty())
             response.setStatus(404).setBody(readHtmlFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
         else
             response.setStatus(301).setBody(readHtmlFile("static/error_pages/301.html")).setContentType(getMimeType("html"));
+    }
+    else if (!redirect_uri.empty()) {
+        uri = redirect_uri;
+        response.setStatus(301).setLocation(redirect_uri).setBody(readHtmlFile("static/error_pages/301.html")).setContentType(getMimeType("html"));
     }
     else
         response.setStatus(404).setBody(readHtmlFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
@@ -265,22 +270,11 @@ bool directory_listing(const std::string &requestedPath, std::vector<Routes> &ro
 
 int check_cookies(std::string cookie)
 {
-    write(1, "hello world\n", 13);
-
     if (cookie.empty())
         return (0);
-    std::cout << "Cookie: " << cookie << std::endl;
     std::string cookieValue = cookie.substr(cookie.find("=") + 1, cookie.length());
-    std::cout << "hello world: -" << cookieValue << "-" << std::endl;
-    // cookieValue = "abc123";
     if (cookieValue == "abc123")
-    {
-        std::cout << "Cookie OK" << std::endl;
-        write(1, "hello world\n", 13);
         return (1);
-    }
-    write(1, "hello world\n", 13);
-    std::cout << "Cookie DEAAAAD" << std::endl;
     return (0);
 }
 
@@ -326,12 +320,19 @@ std::string generateDirectoryListing(const std::string &directory)
     return html.str();
 }
 
-void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Response &response)
+void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, Response &response)
 {
-    if (!is_valid_location(uri))
-    {
+    // if (!is_valid_location(uri))
+    // {
+    //     std::cout << "Not found\n";
+    //     response.setStatus(404).setLocation(uri)
+    //         .setBody(readHtmlFile("static/error_pages/404.html"))
+    //         .setContentType(getMimeType("html"));
+    // }
+    std::cout << "URIIIIIIII: " << uri << std::endl;
+    if (matchUriWithPath("/" + uri, routes, false) == false) {
         std::cout << "Not found\n";
-        response.setStatus(404).setLocation("HAHAHA")
+        response.setStatus(404).setLocation(uri)
             .setBody(readHtmlFile("static/error_pages/404.html"))
             .setContentType(getMimeType("html"));
     }
@@ -360,21 +361,25 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Re
     }
     else
     {
+        std::cout << "URI " << uri << std::endl; 
         if (uri == "login")
         {
-            std::cout << "HAMZAAAA " << uri << std::endl;
             if (check_cookies(request.get_cookie()))
-                response.setStatus(301).setLocation("asdasdasd").setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+                HandleRedirect(uri, response, "/", NULL);
             else
-                response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+                response.setStatus(200).setLocation("/login").setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
         }
         else
         {
-            std::cout << "heeere" <<  uri << std::endl;
-            if (check_cookies(request.get_cookie()))
-                response.setStatus(200).setLocation("/").setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
-            else
-                response.setStatus(301).setLocation("/login").setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+            if (check_cookies(request.get_cookie())) {
+                if (uri.empty())
+                    response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+                else
+                    response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/blog.html")).setContentType(getMimeType("html"));
+            }
+            else {
+                HandleRedirect(uri, response, "/login", NULL);
+            }
         }
     }
     // else
@@ -414,6 +419,7 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
 {
     Response response;
     std::vector<Routes> routes = clientInfo->server.GetRoutes();
+    std::cout << "BEFORE: " << request.get_path() << std::endl;
     std::string uri = request.get_path().substr(1);
 
     // if (!is_valid_method(request.get_method()))

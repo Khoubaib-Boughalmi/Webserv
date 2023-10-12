@@ -52,6 +52,9 @@ void Response::sendResponse(const int clientFD) const {
     response.append(std::to_string(statusCode));
     response.append(getStatusMessage(statusCode));
     response.append("\r\n");
+    response.append("Cache-Control: no-cache, no-store, must-revalidate\r\n");
+    response.append("Pragma: no-cache\r\n");
+    response.append("Expires: 0\r\n");
     response.append("Location: ");
     response.append(location);
     response.append("\r\n");
@@ -65,7 +68,6 @@ void Response::sendResponse(const int clientFD) const {
     response.append(contentType);
     response.append("\r\n\r\n");
     response.append(responseBody);
-    std::cout << response << std::endl;
     send(clientFD, response.c_str() , response.length() , 0);
 }
 
