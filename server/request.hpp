@@ -11,6 +11,8 @@
 #include "Response.hpp"
 #include <stdexcept> 
 #include "Servers.hpp"
+#include "Content.hpp"
+
 
 class Request
 {

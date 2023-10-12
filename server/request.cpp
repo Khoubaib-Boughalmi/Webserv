@@ -393,10 +393,60 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
     // }
 }
 
+
+
+void find_all_centent(std::string req,std::string boundary)
+{
+    std::vector<Content> contents;
+    size_t start_pos = req.find(boundary);
+    size_t next_pos ;
+    while(start_pos != std::string::npos)
+    {
+        next_pos = req.find(boundary, start_pos + 1);
+        if(start_pos != std::string::npos &&next_pos != std::string::npos)
+        {
+            std::string content = req.substr(start_pos, next_pos - start_pos);
+            Content tmp(content, boundary);
+            contents.push_back(tmp);
+            
+        }
+        start_pos = next_pos;
+    }
+    // for (std::vector<Content>::iterator it = contents.begin();it!=contents.end();it++)
+    // {
+    //     std::cout << "####################################" << std::endl;
+        
+    //     std::cout << "content: " << "```"<<it->body<< "```" << std::endl;
+    //     std::cout << "content_name: " << "```"<<it->content_name<< "```" << std::endl;
+    //     std::cout << "file_name: " << "```"<<it->file_name<< "```" << std::endl;
+    // }
+}
+
+void    khoubaib_needs_to_find_a_name_for_this_function(std::string req, Response *response) {
+    if (req.find("Content-Type: multipart/form-data") != std::string::npos) {
+            std::string boundary_start = "boundary=";
+            size_t boundary_pos = req.find(boundary_start);
+            if (boundary_pos != std::string::npos) {
+                boundary_pos += boundary_start.length();
+                std::string boundary = "--" + req.substr(boundary_pos, req.find("\r\n", boundary_pos) - boundary_pos);
+                find_all_centent(req, boundary);
+            }
+        }
+    response->setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+
+}
+
 int HandlePost(Request &request, Response *response, Client *clientInfo)
 {
     (void)clientInfo;
     (void)response;
+    if(request.get_request().find("Content-Type: multipart/form-data") != std::string::npos)
+    {
+        khoubaib_needs_to_find_a_name_for_this_function(request.get_request(), response);
+    }
+    else
+    {
+
     if (request.get_body().empty())
         return (0);
     std::string username = request.get_body().substr(9, request.get_body().find("&") - 9);
@@ -412,6 +462,8 @@ int HandlePost(Request &request, Response *response, Client *clientInfo)
     }
     else
         response->setStatus(401).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+    }
+    
     return (0);
 }
 
