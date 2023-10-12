@@ -130,9 +130,12 @@ bool is_uri_size_valid(const std::string &uri)
 
 bool is_valid_location(const std::string &uri)
 {
-    if (access(uri.c_str(), F_OK) == 0)
-        return (true);
-    return (false);
+if (uri != "login" && uri != "favicon.ico" && !uri.empty())
+        return (false);
+    return (true);
+    // if (access(uri.c_str(), F_OK) == 0)
+    //     return (true);
+    // return (false);
 }
 
 bool is_uri_have_redirect(const std::string &uri)
@@ -260,7 +263,22 @@ bool directory_listing(const std::string &requestedPath, std::vector<Routes> &ro
     return false;
 }
 
-void HandleGet(std::string uri, std::vector<Routes> &routes, Response &response)
+int check_cookies(std::string cookie) {
+    if(cookie.empty())
+        return (0);
+    std::cout << "Cookie:" << cookie.c_str() << std::endl;
+    std::string cookieValue = cookie.substr(cookie.find("=") + 1, 6);
+    // cookieValue = "abc123";
+    if(cookieValue == "abc123")
+    {
+        std::cout << "Cookie OK" << std::endl;
+        return (1);
+    }
+    std::cout << "Cookie DEAAAAD" << std::endl;
+    return (0);
+}
+
+void HandleGet(std::string uri, std::vector<Routes> &routes, Request request, Response &response)
 {
     if (!is_valid_location(uri))
     {
@@ -286,55 +304,92 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Response &response)
             }
         }
     }
-    else
-    {
-        if (has_cgi(uri))
-            std::cout << "CGI" << std::endl;
-        else
-            response.setStatus(200)
-                .setBody(readHtmlFile("static/404.html"))
-                .setContentType(getMimeType("html"));
+    else {
+        if(uri == "login") {
+            if (check_cookies(request.get_cookie()))
+                response.setStatus(301).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+            else
+                response.setStatus(200).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+
+        }
+        else {
+            if(check_cookies(request.get_cookie()))
+                response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+            else
+                response.setStatus(301).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+        }
     }
+    // else
+    // {
+    //     if (has_cgi(uri))
+    //         std::cout << "CGI" << std::endl;
+    //     else
+    //         response.setStatus(200)
+    //             .setBody(readHtmlFile("static/404.html"))
+    //             .setContentType(getMimeType("html"));
+    // }
+
 }
 
-void HandlePost() {}
+int HandlePost(Request &request, Response *response, Client *clientInfo) {
+    (void)clientInfo;
+    (void)response;
+    if(request.get_body().empty())
+        return (0);
+    std::string username = request.get_body().substr(9, request.get_body().find("&") - 9);
+    std::string password = request.get_body().substr(request.get_body().find("&") + 10, request.get_body().length() - 1);
+    std::cout << username << std::endl;
+    std::cout << password << std::endl;
+    if(username == "khoubaib" && password == "123456789") {
+        std::string cookie;
+        cookie = "sessionToken=abc123; Domain=localhost; Path=/; Secure; HttpOnly;  Expires=Wed, 09 Jun 2024 10:18:14 GMT" ;
+        std::cout << "OK" << std::endl;
+        response->setStatus(200).setCookie(cookie).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+        return (1);
+    }else 
+        response->setStatus(401).setBody(readHtmlFile("static/login.html")).setContentType(getMimeType("html"));
+    return (0);
+}
 
-void parse_request(Request &reqeust, Client *clientInfo) // TODO: check request for inprintable characters
+void parse_request(Request &request, Client *clientInfo) // TODO: check request for inprintable characters
 {
     Response response;
     std::vector<Routes> routes = clientInfo->server.GetRoutes();
-    std::string uri = reqeust.get_path().substr(1);
+    std::string uri = request.get_path().substr(1);
 
-    if (!is_valid_method(reqeust.get_method()))
-        response.setStatus(501)
-            .setBody(readHtmlFile("static/501.html"))
-            .setContentType(getMimeType("html"));
-    else if (!is_uri_lenght_valid(uri))
-        response.setStatus(414)
-            .setBody(readHtmlFile("static/414.html"))
-            .setContentType(getMimeType("html"));
-    else if (!is_uri_size_valid(uri))
-        response.setStatus(413)
-            .setBody(readHtmlFile("static/413.html"))
-            .setContentType(getMimeType("html"));
-    else if (!is_valid_location(uri))
-        response.setStatus(404)
-            .setBody(readHtmlFile("static/404.html"))
-            .setContentType(getMimeType("html"));
-    else if (is_uri_have_redirect(uri))
-        HandleRedirect(uri, response, clientInfo);
-    else if (!isMethodAllowed(reqeust.get_method(), uri, routes))
-        response.setStatus(405).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
-    else if (reqeust.get_method() == "GET")
-        HandleGet(uri, routes, response);
-    else if (reqeust.get_method() == "POST")
+    // if (!is_valid_method(request.get_method()))
+    //     response.setStatus(501)
+    //         .setBody(readHtmlFile("static/501.html"))
+    //         .setContentType(getMimeType("html"));
+    // else if (!is_uri_lenght_valid(uri))
+    //     response.setStatus(414)
+    //         .setBody(readHtmlFile("static/414.html"))
+    //         .setContentType(getMimeType("html"));
+    // else if (!is_uri_size_valid(uri))
+    //     response.setStatus(413)
+    //         .setBody(readHtmlFile("static/413.html"))
+    //         .setContentType(getMimeType("html"));
+    // else if (!is_valid_location(uri))
+    //     response.setStatus(404)
+    //         .setBody(readHtmlFile("static/404.html"))
+    //         .setContentType(getMimeType("html"));
+    // else if (is_uri_have_redirect(uri))
+    //     HandleRedirect(uri, response, clientInfo);
+    // else if (!isMethodAllowed(request.get_method(), uri, routes))
+    //     response.setStatus(405).setBody(readHtmlFile("static/404.html")).setContentType(getMimeType("html"));
+    if (request.get_method() == "GET")
     {
-        HandlePost();
-        response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+        HandleGet(uri, routes, request, response);
     }
-    else if (reqeust.get_method() == "DELETE")
-        HandleDelete(uri, response);
-    response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
+    else if (request.get_method() == "POST")
+    {
+        HandlePost(request, &response, clientInfo);
+    }
+    // else if (request.get_method() == "DELETE")
+    //     HandleDelete(uri, response);
+    // std::cout << "IMMMMMM\n";
+    // if(!alreadyResponded)
+    //     response.setStatus(200).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
     response.sendResponse(clientInfo->clientFD);
 }
 

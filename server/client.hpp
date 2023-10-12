@@ -41,5 +41,5 @@ class Client
         std::time_t connected_time;
         struct sockaddr_in address;
 };
-void    parse_request(Request& reqeust, Client* clientInfo);
+void    parse_request(Request& request, Client* clientInfo);
 #endif

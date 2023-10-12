@@ -18,6 +18,11 @@ Response& Response::setContentType(const std::string& contentType) {
     return *this;
 }
 
+Response& Response::setCookie(const std::string& cookie) {
+    this->cookie = cookie;
+    return *this;
+}
+
 std::string Response::getStatusMessage(int statusCode) const {
     switch (statusCode) {
         case 200: return " OK";
@@ -44,6 +49,9 @@ void Response::sendResponse(const int clientFD) const {
     response.append("\r\n");
     response.append("Content-Length: ");
     response.append(std::to_string(responseBody.size()));
+    response.append("\r\n");
+    response.append("set-cookie: "); // if post req for the first time to login then set cookie otherwise don't
+    response.append(cookie);
     response.append("\r\n");
     response.append("Content-Type: ");
     response.append(contentType);

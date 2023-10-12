@@ -15,6 +15,8 @@ public:
 
     Response& setContentType(const std::string& contentType);
 
+    Response& setCookie(const std::string& cookie) ;
+    
     void sendResponse(const int) const;
     std::string getStatusMessage(int statusCode) const;
 
@@ -22,6 +24,7 @@ private:
     int statusCode;
     std::string responseBody;
     std::string contentType;
+    std::string cookie;
 };
 
 const std::string getMimeType(const std::string& fileExtension);
