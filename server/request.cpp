@@ -342,8 +342,12 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
     else if (is_directory(uri))
     {
         std::cout << "DIR" << std::endl;
-        if (directoryHasIndexFile(uri))
+        if (directoryHasIndexFile(uri)) {
+            response.setStatus(200).setLocation(uri)
+                .setBody(readHtmlFile(uri + "/index.html"))
+                .setContentType(getMimeType("html"));
             std::cout << "Has index file\n";
+        }
         else
         {
             std::cout << "Has Not index file\n";
@@ -378,7 +382,7 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
                 if (uri.empty())
                     response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/index.html")).setContentType(getMimeType("html"));
                 else
-                    response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/blog.html")).setContentType(getMimeType("html"));
+                    response.setStatus(200).setLocation(uri).setBody(readHtmlFile("static/upload.html")).setContentType(getMimeType("html"));
             }
             else {
                 HandleRedirect(uri, response, "/login", NULL);

@@ -47,6 +47,11 @@ void Content::parse_content() {
     if(pos != std::string::npos) {
         this->content_name = lineInfo.substr(pos + 6, lineInfo.find("\"", pos + 6) - pos - 6);
     }
+    // check folder exist
+    // struct stat st = {0};
+    // if (stat("./static/upload", &st) == -1) {
+    //     mkdir("./static/upload", 0700);
+    // }
     if(this->is_file)
     {
         std::ofstream myfile;
