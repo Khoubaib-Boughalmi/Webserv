@@ -32,6 +32,9 @@ class   Routes {
         const std::string&  getRedirectUrl() const;
         const std::vector<std::string>  getMethods() const;
         const bool& getDirectoryListing() const;    
+        const std::string&  getDefaultFile() const;
+
+
         // TODO : add getters
         void    clear();
 

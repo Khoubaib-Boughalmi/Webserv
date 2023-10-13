@@ -30,6 +30,7 @@ void    Servers::SetErrorPages(std::vector<std::string>& err_pages) {
 }
 const std::vector<std::string>& Servers::GetErrorPages() const { return error_pages; }
 
+
 void    Servers::SetClientBodyLimit(const std::string& bodyLimit) { clientBodyLimit = bodyLimit; }
 const std::string&  Servers::GetClientBodyLimit() const { return clientBodyLimit; }
 
@@ -123,6 +124,8 @@ void    Routes::SetRedirectUrl(const std::string& r_url) { redirect_url = r_url;
 const std::string& Routes::getPath() const {
     return path;
 }
+
+const std::string& Routes::getDefaultFile() const { return  this->default_file;}
 
 void    Routes::clear() {
     path.clear();
