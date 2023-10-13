@@ -34,11 +34,20 @@ class   Routes {
         const bool& getDirectoryListing() const;    
         const std::string&  getDefaultFile() const;
 
+        const std::string& getUploadDirectory() const;
+        const bool& getUploadEnabled() const;
+
 
         // TODO : add getters
         void    clear();
 
         void    print();
+
+        bool    empty() {
+            if (path.empty() && methods.empty() && directory_listing == false && default_file.empty() && cgi_extensions.empty() && cgi_bin.empty() && upload_enabled == false && upload_directory.empty() && redirect_url.empty())
+                return (true);
+            return false;
+        }
     private:
         // int                         index;
         std::string                 path;

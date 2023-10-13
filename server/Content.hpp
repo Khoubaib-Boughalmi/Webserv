@@ -3,19 +3,20 @@
 #include <sstream>
 #include <fstream>
 #include <sys/time.h>
+#include "Servers.hpp"
 
 #include <iostream>
 
 
 class Content{
     public:
-        Content(std::string &content, std::string &boundary);
+        Content(std::string &content, std::string &boundary,Routes &route);
         ~Content();
         Content(const Content &copy);
         Content &operator=(const Content &copy);
-        void parse_content();
+        void parse_content(Routes &route);
 
-    // private:
+    private:
         Content();
         std::string content;
         std::string content_type;

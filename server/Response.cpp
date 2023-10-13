@@ -79,6 +79,8 @@ void initializeMimeTypes() {
     _mimeTypes["jpg"] = "image/jpeg";
     _mimeTypes["jpeg"] = "image/jpeg";
     _mimeTypes["png"] = "image/png";
+    _mimeTypes["zip"] = "application/zip";
+
 }
 
 const std::string getMimeType(const std::string& fileExtension) {

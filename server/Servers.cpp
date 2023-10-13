@@ -91,7 +91,14 @@ const std::vector<std::string>  Routes::getMethods() const {
 const bool& Routes::getDirectoryListing() const {
     return (this->directory_listing);
 }
+const std::string& Routes::getUploadDirectory() const{
+    return (this->upload_directory);
+}
+//getUploadEnabled
 
+const bool& Routes::getUploadEnabled() const{
+    return (this->upload_enabled);
+}
 Servers::~Servers() {}
 
 //

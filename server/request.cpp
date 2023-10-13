@@ -421,7 +421,7 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
     // }
 }
 
-void find_all_centent(std::string req,std::string boundary)
+void find_all_centent(std::string req,std::string boundary,Routes &route)
 {
     std::vector<Content> contents;
     size_t start_pos = req.find(boundary);
@@ -432,7 +432,7 @@ void find_all_centent(std::string req,std::string boundary)
         if(start_pos != std::string::npos &&next_pos != std::string::npos)
         {
             std::string content = req.substr(start_pos, next_pos - start_pos);
-            Content tmp(content, boundary);
+            Content tmp(content, boundary,route);
             contents.push_back(tmp);
             
         }
@@ -448,27 +448,50 @@ void find_all_centent(std::string req,std::string boundary)
     // }
 }
 
-void    khoubaib_needs_to_find_a_name_for_this_function(std::string req, Response *response) {
+void    Post_handle_form_data(std::string req, Response *response,Routes &route) {
     if (req.find("Content-Type: multipart/form-data") != std::string::npos) {
             std::string boundary_start = "boundary=";
             size_t boundary_pos = req.find(boundary_start);
             if (boundary_pos != std::string::npos) {
                 boundary_pos += boundary_start.length();
                 std::string boundary = "--" + req.substr(boundary_pos, req.find("\r\n", boundary_pos) - boundary_pos);
-                find_all_centent(req, boundary);
+                find_all_centent(req, boundary,route);
             }
         }
     response->setStatus(200).setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
 
 }
 
-int HandlePost(Request &request, Response *response, Client *clientInfo)
+Routes Route_returning(const std::string &requestedPath, std::vector<Routes> &routes)
+{
+    Routes route;
+    for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
+    {
+        route = *it;
+        const std::string &path = route.getPath().substr(1);
+        if (path == requestedPath)
+        {
+            return route;
+        }
+    }
+    return route;
+}
+
+int HandlePost(Request &request, Response *response, Client *clientInfo,std::string uri, std::vector<Routes> &routes)
 {
     (void)clientInfo;
     (void)response;
+    Routes route= Route_returning(uri, routes);
+    if(route.empty())
+    {
+        std::cout << "Not found\n";
+        response->setStatus(404).setLocation(uri)
+            .setBody(readFile("static/error_pages/404.html"))
+            .setContentType(getMimeType("html"));
+    } 
     if(request.get_request().find("Content-Type: multipart/form-data") != std::string::npos)
     {
-        khoubaib_needs_to_find_a_name_for_this_function(request.get_request(), response);
+        Post_handle_form_data(request.get_request(), response,route);
     }
     else
     {
@@ -525,7 +548,7 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     }
     else if (request.get_method() == "POST")
     {
-        HandlePost(request, &response, clientInfo);
+        HandlePost(request, &response, clientInfo, uri, routes);
     }
     // else if (request.get_method() == "DELETE")
     //     HandleDelete(uri, response);
