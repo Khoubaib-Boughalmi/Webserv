@@ -162,11 +162,25 @@ void Server::accept_new_request(Servers& active_server) {
 int Server::receive(int fd) {
     int req;
     char buff[700000] = {0};
+   std::string final_req;
 
     // FD_CLR(fd, &(this->read_fds));
-    std::cout << "Receiving request from client with fd: " << fd << std::endl;
-    req = recv(fd, &buff, sizeof(buff), 0);
-    std::cout << buff << std::endl;
+    // std::cout << "Receiving request from client with fd: " << fd << std::endl;
+    // req = recv(fd, &buff, sizeof(buff), 0);
+    // std::cout << buff << std::endl;
+
+    memset(buff, 0, sizeof(buff));
+    while (( req = recv(fd, buff, sizeof(buff), 0)) > 0) {
+            int i = 0;
+            while (i<req)
+            {
+                final_req+=buff[i];
+                i++;
+            }
+            // final_req+= std::string(buff, req);
+            memset(buff, 0, sizeof(buff));
+    }
+
     //client disconnected
     if(!req) {
         std::cout << "Client with fd " << fd << " Disconnected" << std::endl;
@@ -186,7 +200,11 @@ int Server::receive(int fd) {
      for (unsigned int index = 0; index < sockets_FD.size(); index++){
         if(sockets_FD[index].clientFD == fd) {
             std::cout << sockets_FD[index].server.GetPort() << std::endl;
-            sockets_FD[index].clientRequest = Request(buff);
+            //---
+            // std::cout << "================"<< std::endl;
+            // std::cout << "Request: " << final_req << std::endl;
+            // std::cout << "@@@@@@@@@@@@@@@@@@@@@@@"<< std::endl;
+            sockets_FD[index].clientRequest = Request(final_req);
             // sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request()));
         }
     }
@@ -195,7 +213,13 @@ int Server::receive(int fd) {
 
 void Server::send(Client *clientInfo) {
     Request req = clientInfo->clientRequest;
-    parse_request(req, clientInfo);
+    
+            std::cout << "================"<< std::endl;
+            std::cout << "Request: " << req.get_request() << std::endl;
+            std::cout << "len Request: " << req.get_request().length() << std::endl;
+            std::cout << "@@@@@@@@@@@@@@@@@@@@@@@"<< std::endl;
+    // if(req.get_request().length()>70) 
+        parse_request(req, clientInfo);
     // clientInfo->clientRequest.parse_request(clientInfo);
 }
 

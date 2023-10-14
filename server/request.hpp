@@ -53,6 +53,7 @@ class Request
         std::string get_content_length(void);
         std::string get_content_type(void);
         std::string get_body(void);
+        std::string get_req(void);
 
         void set_method(std::string method);
         void set_path(std::string path);
