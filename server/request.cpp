@@ -28,13 +28,24 @@ Request::Request(std::string req)
         lineStream >> method >> path >> protocol;
     }
 
-    while (std::getline(requestStream, line))
+
+
+    std::string header=req.substr(0,req.find("\r\n\r\n"));
+    std::cout<<"header: "<<header<<std::endl;
+
+    // std::string header = req;
+    std::stringstream requestStream2(header);
+
+    std::string line2;
+
+
+    while (std::getline(requestStream2, line2))
     {
-        size_t pos = line.find(':');
+        size_t pos = line2.find(':');
         if (pos != std::string::npos)
         {
-            std::string headerName = line.substr(0, pos);
-            std::string headerValue = line.substr(pos + 2);
+            std::string headerName = line2.substr(0, pos);
+            std::string headerValue = line2.substr(pos + 2);
 
             if (headerName == "Servers")
                 this->host = TrimSpaces(headerValue);
@@ -59,7 +70,55 @@ Request::Request(std::string req)
         }
         fillBodyFromPostRequest(this->req);
     }
+    std::cout <<"YESSSSS0"<<std::endl;
+    // exit(0);
 }
+
+
+// Request::Request(std::string req)
+// {
+//     this->req = req;
+//     std::stringstream requestStream(req);
+//     std::string line;
+
+//     if (std::getline(requestStream, line))
+//     {
+//         std::istringstream lineStream(line);
+//         lineStream >> method >> path >> protocol;
+//     }
+
+//     while (std::getline(requestStream, line))
+//     {
+//         size_t pos = line.find(':');
+//         if (pos != std::string::npos)
+//         {
+//             std::string headerName = line.substr(0, pos);
+//             std::string headerValue = line.substr(pos + 2);
+
+//             if (headerName == "Servers")
+//                 this->host = TrimSpaces(headerValue);
+//             else if (headerName == "Connection")
+//                 this->connection = TrimSpaces(headerValue);
+//             else if (headerName == "Cache-Control")
+//                 this->cache_control = TrimSpaces(headerValue);
+//             else if (headerName == "User-Agent")
+//                 this->user_agent = TrimSpaces(headerValue);
+//             else if (headerName == "Accept")
+//                 this->accept = TrimSpaces(headerValue);
+//             else if (headerName == "Accept-Encoding")
+//                 this->accept_encoding = TrimSpaces(headerValue);
+//             else if (headerName == "Accept-Language")
+//                 this->accept_language = TrimSpaces(headerValue);
+//             else if (headerName == "Cookie")
+//                 this->cookie = TrimSpaces(headerValue);
+//             else if (headerName == "Content-Length")
+//                 this->content_length = TrimSpaces(headerValue);
+//             else if (headerName == "Content-Type")
+//                 this->content_type = TrimSpaces(headerValue);
+//         }
+//         fillBodyFromPostRequest(this->req);
+//     }
+// }
 
 std::string readFile(const std::string &filename)
 {
@@ -504,8 +563,9 @@ int HandlePost(Request &request, Response *response, Client *clientInfo,std::str
     std::cout << password << std::endl;
     if (username == "khoubaib" && password == "123456789")
     {
+        std::cout<<"Cookie khdammmmmmmmmmm"<<std::endl;
         std::string cookie;
-        cookie = "sessionToken=abc123; Domain=localhost; Path=/; Secure; HttpOnly;  Expires=Wed, 09 Jun 2024 10:18:14 GMT";
+        cookie = "sessionToken=abc123; Path=/; Expires=Wed, 09 Jun 2024 10:18:14 GMT";
         response->setStatus(301).setLocation("/").setCookie(cookie).setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
         return (1);
     }
