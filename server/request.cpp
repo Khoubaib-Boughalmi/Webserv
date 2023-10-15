@@ -16,7 +16,7 @@ void Request::fillBodyFromPostRequest(const std::string &request)
     }
 }
 
-Request::Request(std::string req)
+Request::Request(std::string req): is_valid(1)
 {
     this->req = req;
     std::stringstream requestStream(req);
@@ -24,17 +24,42 @@ Request::Request(std::string req)
 
     if (std::getline(requestStream, line))
     {
+        if (line.empty()) {
+            return ;
+        }
         std::istringstream lineStream(line);
-        lineStream >> method >> path >> protocol;
-    }
+        if (!(lineStream >> method))
+        {
+            is_valid = 0;
+            return;
+        }
+        if (!(lineStream >> path))
+        {
+            is_valid = 0;
+            return;
+        }
 
+        if (!(lineStream >> protocol))
+        {
+            is_valid = 0;
+            return;
+        }
+    }
     while (std::getline(requestStream, line))
     {
         size_t pos = line.find(':');
+        std::string headerName;
+        std::string headerValue;
         if (pos != std::string::npos)
         {
-            std::string headerName = line.substr(0, pos);
-            std::string headerValue = line.substr(pos + 2);
+            headerName = line.substr(0, pos);
+            if(line.length() > pos + 2)
+                headerValue = line.substr(pos + 2);
+            else
+            {
+                is_valid = 0;
+                return;
+            }
 
             if (headerName == "Servers")
                 this->host = TrimSpaces(headerValue);
@@ -116,7 +141,9 @@ void HandleDelete(std::string &uri, Response &response)
 
 bool is_valid_method(const std::string &method)
 {
-    return (method == "GET" || method == "POST" || method == "DELETE");
+    if (method == "GET" || method == "POST" || method == "DELETE")
+        return (true);
+    return (false);
 }
 
 bool is_uri_lenght_valid(const std::string &uri)
@@ -187,11 +214,11 @@ void HandleRedirect(std::string &uri, Response &response, std::string redirect_u
         if (redirect_url.empty())
             response.setStatus(404).setBody(readFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
         else
-            response.setStatus(301).setBody(readFile("static/error_pages/301.html")).setContentType(getMimeType("html"));
+            response.setStatus(301).setBody(readFile("static/login.html")).setContentType(getMimeType("html"));
     }
     else if (!redirect_uri.empty()) {
         uri = redirect_uri;
-        response.setStatus(301).setLocation(redirect_uri).setBody(readFile("static/error_pages/301.html")).setContentType(getMimeType("html"));
+        response.setStatus(301).setLocation(redirect_uri).setBody(readFile("static/login.html")).setContentType(getMimeType("html"));
     }
     else
         response.setStatus(404).setBody(readFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
@@ -202,7 +229,8 @@ bool isMethodAllowed(const std::string &method, const std::string &requestedPath
     for (std::vector<Routes>::const_iterator it = routes.begin(); it != routes.end(); ++it)
     {
         const Routes &route = *it;
-        const std::string &path = route.getPath().substr(1);
+        const std::string &path = route.getPath();
+        std::cout << "REQUESTED PATH: " << requestedPath << std::endl;
         if (path == requestedPath)
         {
             std::vector<std::string> methods = route.getMethods();
@@ -218,7 +246,8 @@ bool isMethodAllowed(const std::string &method, const std::string &requestedPath
 
 bool is_directory(std::string &uri)
 {
-    uri = uri.substr(7, uri.length());
+    std::cout << "URI: " << uri << std::endl;
+    // uri = uri.substr(7, uri.length());
     DIR *dir;
 
     dir = opendir(uri.c_str());
@@ -343,14 +372,14 @@ std::string GetDefaultFile(const std::vector<Routes>& routes, const std::string&
 
 void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, Response &response)
 {
-    std::string rooted_uri = "static/" + uri;
-    if (matchUriWithPath("/" + uri, routes, false) == false) {
+    std::string rooted_uri = "static" + uri;
+    if (matchUriWithPath(uri, routes, false) == false) {
         std::cout << "Not found\n";
         response.setStatus(404).setLocation(uri)
             .setBody(readFile("static/error_pages/404.html"))
             .setContentType(getMimeType("html"));
     }
-    else if (is_directory(rooted_uri))
+    else if (is_directory(rooted_uri) && uri != "/")
     {
         std::cout << "DIR" << std::endl;
         if (directoryHasIndexFile(rooted_uri)) {
@@ -379,28 +408,29 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
     }
     else
     {
-        if (uri == "login")
+        std::cout << "FILE" << uri << std::endl;
+        if (uri == "/login")
         {
             if (check_cookies(request.get_cookie())) {
                 HandleRedirect(uri, response, "/", NULL);
             }
             else
                 response.setStatus(200).setLocation(uri)
-                    .setBody(readFile("static/" + GetDefaultFile(routes, "/" + uri)))
+                    .setBody(readFile("static/" + GetDefaultFile(routes, uri)))
                     .setContentType(getMimeType(GetFileExtension(uri)));
                 // response.setStatus(200).setLocation("/login").setBody(readFile("static/login.html")).setContentType(getMimeType("html"));
         }
         else
         {
             if (check_cookies(request.get_cookie())) {
-                if (uri.empty()) {
+                if (uri == "/") {
                     response.setStatus(200).setLocation(uri).setLocation("/")
-                        .setBody(readFile(GetDefaultFile(routes, uri.append("/"))))
+                        .setBody(readFile("static/" + GetDefaultFile(routes, uri)))
                         .setContentType(getMimeType(GetFileExtension(uri)));
                 }
                 else {
                     response.setStatus(200).setLocation(uri).setLocation(uri)
-                        .setBody(readFile("static/" + GetDefaultFile(routes, "/" + uri)))
+                        .setBody(readFile("static/" + GetDefaultFile(routes, uri)))
                         .setContentType(getMimeType(GetFileExtension(uri)));
                     // response.setStatus(200).setLocation(uri).setBody(readFile(GetDefaultFile(routes, uri))).setContentType(getMimeType(GetFileExtension(uri)));
                 }
@@ -519,9 +549,16 @@ int HandlePost(Request &request, Response *response, Client *clientInfo,std::str
 void parse_request(Request &request, Client *clientInfo) // TODO: check request for inprintable characters
 {
     Response response;
+    std::string uri;
     std::vector<Routes> routes = clientInfo->server.GetRoutes();
-    std::string uri = request.get_path().substr(1);
-
+    if (request.get_path().length() >= 1)
+        uri = request.get_path();
+    else
+    {
+        response.setStatus(500).setBody(readFile("static/error_pages/404.html")).setContentType(getMimeType("html"));
+        response.sendResponse(clientInfo->clientFD);
+        return ;
+    }
     if (!is_valid_method(request.get_method()))
         response.setStatus(501)
             .setBody(readFile("static/501.html"))
@@ -584,6 +621,7 @@ Request &Request::operator=(const Request &copy)
         this->content_length = copy.content_length;
         this->content_type = copy.content_type;
         this->body = copy.body;
+        this->is_valid = copy.is_valid;
     }
     return *this;
 }
@@ -651,6 +689,11 @@ std::string Request::get_cookie(void)
 std::string Request::get_content_length(void)
 {
     return this->content_length;
+}
+
+int Request::get_is_valid()
+{
+    return this->is_valid;
 }
 
 std::string Request::get_content_type(void)

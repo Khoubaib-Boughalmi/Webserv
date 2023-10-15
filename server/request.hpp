@@ -17,6 +17,7 @@
 class Request
 {
     private:
+        int is_valid;
         std::string req;
         std::string method;
         std::string path;
@@ -53,6 +54,7 @@ class Request
         std::string get_content_length(void);
         std::string get_content_type(void);
         std::string get_body(void);
+        int         get_is_valid(void);
 
         void set_method(std::string method);
         void set_path(std::string path);

@@ -143,7 +143,7 @@ void Server::init_read_write_fd_set(void) {
 
 void Server::accept_new_request(Servers& active_server) {
     // FD_CLR(master_sockets[0], &(this->read_fds));
-    int client_fd = accept(active_server.GetSock(), (struct sockaddr *) &(this->addresses[0]), &(this->addrlen));
+    int client_fd = accept(active_server.GetSock(), (struct sockaddr *) &(this->addresses[0]), &(this->addrlen)); //check this->addresses[0] hardcoded
     if(client_fd < 0)
     {
         perror("Client Connection err: "); //
@@ -162,12 +162,11 @@ void Server::accept_new_request(Servers& active_server) {
 int Server::receive(int fd) {
     int req;
     char buff[700000] = {0};
-
+    std::string final_req;
     // FD_CLR(fd, &(this->read_fds));
     std::cout << "Receiving request from client with fd: " << fd << std::endl;
-    req = recv(fd, &buff, sizeof(buff), 0);
-    std::cout << buff << std::endl;
-    //client disconnected
+    while ((req = recv(fd, &buff, sizeof(buff), 0)) > 0)
+        final_req.append(buff);
     if(!req) {
         std::cout << "Client with fd " << fd << " Disconnected" << std::endl;
         close(fd);
@@ -186,7 +185,16 @@ int Server::receive(int fd) {
      for (unsigned int index = 0; index < sockets_FD.size(); index++){
         if(sockets_FD[index].clientFD == fd) {
             std::cout << sockets_FD[index].server.GetPort() << std::endl;
-            sockets_FD[index].clientRequest = Request(buff);
+            sockets_FD[index].clientRequest = Request(final_req);
+            if(sockets_FD[index].clientRequest.get_is_valid() == 0) {
+                std::cout << "Invalid request" << std::endl;
+                Response response;
+                response.setStatus(500).setBody("<html><body><h1>500 Internal Server Error</h1></body></html>").setContentType(getMimeType("html"));
+                response.sendResponse(fd);
+                close(fd);
+                sockets_FD.erase(sockets_FD.begin() + index); //remove mutant fd from sockets_FD
+                return 0;
+            }
             // sockets_FD[index].clientRequest.set_content_type(determine_mime_type(sockets_FD[index].clientRequest.get_request()));
         }
     }
@@ -306,8 +314,13 @@ void Server::handle_already_existing_connection(void) {
             if (sockets_FD[index].clientRequest.get_path() == "/cgi-bin")
                 send_cgibin_response(sockets_FD[index].clientFD, index);
             else
+            {
                 send(&sockets_FD[index]);
-            break;
+                // delete &sockets_FD[index];
+                close(sockets_FD[index].clientFD);
+                sockets_FD.erase(sockets_FD.begin() + index); //remove client fd from sockets_FD after sending response
+                break;
+            }
         }
     }
 }
@@ -336,8 +349,7 @@ void Server::select_accept_recv_send_handler(void) {
             perror("select err: ");
             exit(EXIT_FAILURE);
         }
-        check_for_timeout();
-        //if there is an activty in master_sockets[0] then it's a new request
+        // check_for_timeout(); to add if keep-alive
         active_server = check_ISSET_master_fds();
         if (!(active_server.getHost().empty())) {
             accept_new_request(active_server);
