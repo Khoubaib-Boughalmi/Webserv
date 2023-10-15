@@ -52,6 +52,8 @@ class Server
     void update_client_connected_time (int fd);
     Servers check_ISSET_master_fds(void);
     int check_if_fd_is_server(int fd);
+    void send_cgibin_response(int fd, int index);
+
 };
 
 #endif

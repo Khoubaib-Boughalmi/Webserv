@@ -12,6 +12,7 @@
 #include <cstring>
 #include <algorithm>
 # include <unistd.h>
+#include <sys/wait.h>
 
 class   Routes {
     public:
