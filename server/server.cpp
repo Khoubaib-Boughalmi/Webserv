@@ -255,7 +255,7 @@ void Server::send_cgibin_response(int fd, int index) {
         dup2(pipefd[1], STDOUT_FILENO);
         dup2(pipefd[1], STDERR_FILENO);
         close(pipefd[1]);
-        std::string path = directory_path + "/get";
+        std::string path = directory_path + "/post";
         char *args[] = {
             (char *)path.c_str(),
             (char *)"hello",
