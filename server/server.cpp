@@ -180,6 +180,62 @@ void Server::accept_new_request(Servers &active_server)
         std::cout << "Server is overloaded try later.." << std::endl; // should be sent to client
 }
 
+
+int get_numberof(std::string str, std::string substr)
+{
+    int number = 0;
+    size_t pos = 0;
+    while ((pos = str.find(substr, pos)) != std::string::npos)
+    {
+        number++;
+        pos += substr.length();
+    }
+    return number;
+}
+
+
+int check_the_req(std::string req)
+{
+    std::string method = req.substr(0, req.find(" "));
+    std::cout << "method " << method << std::endl;
+
+    int n_newlines = get_numberof(req, "\r\n\r\n");
+    std::cout << "number of it " << n_newlines << std::endl;
+    int FORPOSTSHOUDBE = 1;
+    if(method=="POST")
+    {
+        // find boundary
+        size_t boundarypos = req.find("boundary=");
+        if(boundarypos != std::string::npos)
+        {
+            std::string boundary = req.substr(boundarypos+9, req.find("\r\n", boundarypos)-boundarypos-9);
+            std::cout << "boundary :" << boundary << std::endl;
+            std::cout << "number of boundary :" << get_numberof(req,boundary) << std::endl;
+            FORPOSTSHOUDBE=get_numberof(req,boundary)-1;
+        }
+        else{
+            //find chunked
+            size_t chunkedpos = req.find("chunked");
+            if(chunkedpos != std::string::npos)
+            {
+                std::cout << "chunked" << std::endl;
+                FORPOSTSHOUDBE = 2;
+            }
+
+        }
+
+    }
+
+    if(((method=="GET" || method=="HEAD" ) && n_newlines == 1) || (method=="POST" && n_newlines == FORPOSTSHOUDBE))
+    {
+        std::cout << "valid request" << std::endl;
+        return 1;
+    }
+
+
+    return 0;
+}
+
 int Server::receive(int fd)
 {
     int req;
@@ -192,17 +248,34 @@ int Server::receive(int fd)
     // std::cout << buff << std::endl;
 
     memset(buff, 0, sizeof(buff));
-    while ((req = recv(fd, buff, sizeof(buff), 0)) > 0)
+    // while ((req = recv(fd, buff, sizeof(buff), 0)) > 0)
+    // {
+    //     int i = 0;
+    //     // while (i < req)
+    //     // {
+    //     //     final_req += buff[i];
+    //     //     i++;
+    //     // }
+    //     final_req+= std::string(buff, req);
+    //     memset(buff, 0, sizeof(buff));
+    // }
+
+    while(true)
     {
-        int i = 0;
-        while (i < req)
+        req = recv(fd, buff, sizeof(buff), 0);
+        if (req == 0)
+            break;
+        if(req < 0)
         {
-            final_req += buff[i];
-            i++;
+            if(check_the_req(final_req))
+                break;
+            continue;                
         }
-        // final_req+= std::string(buff, req);
+        final_req+= std::string(buff, req);
         memset(buff, 0, sizeof(buff));
+        // usleep(100);
     }
+
 
     // client disconnected
     if (!req)

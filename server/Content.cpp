@@ -44,7 +44,7 @@ void Content::parse_content(Routes &route) {
         ForName = ";";
     }
     pos = lineInfo.find("name=");
-    std::cout <<"dasfds"<<std::endl;
+    // std::cout <<"dasfds"<<std::endl;
 
     if(pos != std::string::npos) {
         this->content_name = lineInfo.substr(pos + 6, lineInfo.find("\"", pos + 6) - pos - 6);

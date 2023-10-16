@@ -31,7 +31,7 @@ Request::Request(std::string req)
 
 
     std::string header=req.substr(0,req.find("\r\n\r\n"));
-    std::cout<<"header: "<<header<<std::endl;
+    // std::cout<<"header: "<<header<<std::endl;
 
     // std::string header = req;
     std::stringstream requestStream2(header);
