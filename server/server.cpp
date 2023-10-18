@@ -215,7 +215,7 @@ int check_the_req(std::string req)
     }
     std::cout << "n_newlines " << n_newlines << std::endl;
 
-    if(((method=="GET" ||  method =="DELETE" ) && n_newlines == 1) || (method=="POST" && n_newlines == FORPOSTSHOUDBE) || (method!="GET" && method!="POST" && method!="DELETE"))
+    if(((method=="GET" ||  method =="DELETE"||  method =="HEAD" ) && n_newlines == 1 ) || (method=="POST" && n_newlines == FORPOSTSHOUDBE) || (method!="GET" && method!="POST" && method!="DELETE" && method!="HEAD"))
     {
         return 1;
     }

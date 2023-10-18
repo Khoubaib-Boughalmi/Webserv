@@ -628,12 +628,7 @@ int HandlePost(Request &request, Response &response, Client *clientInfo,std::str
         if (username == "khoubaib" && password == "123456789")
         {
             std::string cookie;
-            if (containsWord(request.get_host(), "localhost")) {
-                cookie = "sessionToken=abc123; Domain=localhost; Path=/; Expires=Wed, 09 Jun 2024 10:18:14 GMT";
-            }
-            else {
-                cookie = "sessionToken=abc123; Domain=10.12.10.25; Path=/; Expires=Wed, 09 Jun 2024 10:18:14 GMT";
-            }
+            cookie = "sessionToken=abc123; Path=/; Expires=Wed, 09 Jun 2024 10:18:14 GMT";
             response.setStatus(301).setLocation("/").setCookie(cookie).setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
             return (1);
         }
