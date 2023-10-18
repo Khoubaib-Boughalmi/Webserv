@@ -132,6 +132,10 @@ const std::string& Routes::getPath() const {
     return path;
 }
 
+const std::string& Routes::get_cgi_bin() const {
+    return (this->cgi_bin);
+}
+
 const std::string& Routes::getDefaultFile() const { return  this->default_file;}
 
 void    Routes::clear() {

@@ -1,14 +1,11 @@
 #include "Content.hpp"
 
-
 Content::Content(std::string &content, std::string &boundary, Routes &route) {
     this->content = content;
     this->boundary = boundary;
     this->is_file = false;
     this->parse_content(route);
 }
-
-
 
 Content::Content() {}
 Content::~Content() {}
@@ -44,7 +41,6 @@ void Content::parse_content(Routes &route) {
         ForName = ";";
     }
     pos = lineInfo.find("name=");
-    std::cout <<"dasfds"<<std::endl;
 
     if(pos != std::string::npos) {
         this->content_name = lineInfo.substr(pos + 6, lineInfo.find("\"", pos + 6) - pos - 6);
@@ -57,7 +53,7 @@ void Content::parse_content(Routes &route) {
     if(this->is_file && route.getUploadEnabled())
     {
         std::ofstream myfile;
-        myfile.open(route.getUploadDirectory() + this->file_name);
+        myfile.open("static/" + route.getUploadDirectory() + this->file_name);
         myfile << this->body;
         myfile.close();
     }

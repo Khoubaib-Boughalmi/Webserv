@@ -42,7 +42,7 @@ std::string Response::getStatusMessage(int statusCode) const {
         case 414: return " Request-URI Too Long";
         case 500: return " Internal Server Error";
         case 501: return " Not Implemented";
-        default:  return "Unknown Status";
+        default:  return "CGI STATUS";
     }
 }
 
@@ -68,6 +68,7 @@ void Response::sendResponse(const int clientFD) const {
     response.append(contentType);
     response.append("\r\n\r\n");
     response.append(responseBody);
+    // std::cout << response << std::endl;
     send(clientFD, response.c_str() , response.length() , 0);
 }
 

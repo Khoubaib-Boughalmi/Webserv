@@ -4,7 +4,7 @@ int main() {
     std::cout << "<!DOCTYPE html>\n";
     std::cout << "<html>\n" ;
     std::cout << "<head>\n" ;
-    std::cout << "<title>Login Page</title>\n" ;
+    std::cout << "<title>HIIIIIIII</title>\n" ;
     std::cout << "<style>\n" ;
     std::cout << "body {\n" ;
     std::cout << "font-family: Arial, sans-serif;\n" ;
@@ -65,7 +65,7 @@ int main() {
     std::cout << "<input type='password' id='password' name='password' required>\n";
     std::cout << "</div>\n";
     std::cout << "<div class='form-group'>\n";
-    std::cout << "<button type='submit'>Login</button>\n";
+    std::cout << "<button type='submit'>TEEEEEST</button>\n";
     std::cout << "</div>\n";
     std::cout << "</form>\n";
     std::cout << "</div>\n";

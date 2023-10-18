@@ -37,6 +37,7 @@ class   Routes {
 
         const std::string& getUploadDirectory() const;
         const bool& getUploadEnabled() const;
+        const std::string& get_cgi_bin() const;
 
 
         // TODO : add getters
