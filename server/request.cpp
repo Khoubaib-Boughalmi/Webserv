@@ -540,8 +540,9 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
     }
 }
 
-void find_all_centent(std::string req,std::string boundary,Routes &route)
+int  find_all_centent(std::string req,std::string boundary,Routes &route, size_t limit)
 {
+    int status = 201;
     std::vector<Content> contents;
     size_t start_pos = req.find(boundary);
     size_t next_pos ;
@@ -551,26 +552,35 @@ void find_all_centent(std::string req,std::string boundary,Routes &route)
         if(start_pos != std::string::npos &&next_pos != std::string::npos)
         {
             std::string content = req.substr(start_pos, next_pos - start_pos);
-            Content tmp(content, boundary,route);
+            Content tmp(content, boundary,route,limit);
+            if(tmp.status!=201)
+                status = tmp.status;
             contents.push_back(tmp);
             
         }
         start_pos = next_pos;
     }
+    return status;
 }
 
-void    Post_handle_form_data(std::string req, Response response,Routes &route) {
-    if (req.find("Content-Type: multipart/form-data") != std::string::npos) {
+void    Post_handle_form_data(std::string req, Response &response,Routes &route, std::string limit) {
+    int status =201;
+        size_t  limit_int = std::strtol(limit.c_str(), NULL, 10);
+
+        
+        if (req.find("Content-Type: multipart/form-data") != std::string::npos) {
             std::string boundary_start = "boundary=";
             size_t boundary_pos = req.find(boundary_start);
             if (boundary_pos != std::string::npos) {
                 boundary_pos += boundary_start.length();
                 std::string boundary = "--" + req.substr(boundary_pos, req.find("\r\n", boundary_pos) - boundary_pos);
-                find_all_centent(req, boundary,route);
+                int statusres= find_all_centent(req, boundary,route,limit_int);
+
+                if(statusres!=201)
+                    status = statusres;
             }
         }
-    response.setStatus(200).setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
-
+    response.setStatus(status).setBody("").setContentType(getMimeType("html"));
 }
 
 Routes Route_returning(const std::string &requestedPath, std::vector<Routes> &routes)
@@ -597,8 +607,8 @@ int HandlePost(Request &request, Response &response, Client *clientInfo,std::str
 
     if(request.get_request().find("Content-Type: multipart/form-data") != std::string::npos)
     {
-        Post_handle_form_data(request.get_request(), response,route);
-        response.setStatus(200).setLocation("/").setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
+        Post_handle_form_data(request.get_request(), response,route,clientInfo->server.GetClientBodyLimit());
+        // response.setStatus(200).setLocation("/").setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
         //dont forget to fix the response 
     }
     else if (has_cgi(uri)) {
@@ -650,7 +660,13 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     //     response.sendResponse(clientInfo->clientFD);
     //     return ;
     // }
-    if (!is_valid_method(request.get_method()))
+    if(request.get_method()=="HEAD")
+    {
+        response.setStatus(501)
+            .setBody("")
+            .setContentType(getMimeType("html"));
+    }
+    else if (!is_valid_method(request.get_method()))
         response.setStatus(501)
             .setBody(readFile("static/error_pages/501.html"))
             .setContentType(getMimeType("html"));
@@ -679,6 +695,8 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     {
         HandleDelete(uri, response);
     }
+    else
+        response.setStatus(500).setBody(readFile("static/error_pages/500.html")).setContentType(getMimeType("html"));
     response.sendResponse(clientInfo->clientFD);
 }
 

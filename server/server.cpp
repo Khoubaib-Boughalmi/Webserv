@@ -212,16 +212,20 @@ int check_the_req(std::string req)
             FORPOSTSHOUDBE=get_numberof(req,boundary)-1;
         }
         else{
-            //find chunked
-            size_t chunkedpos = req.find("chunked");
+            //find chunked in headers
+            std::string headers=req.substr(0, req.find("\r\n\r\n"));
+            if(headers.empty())
+                return 0;
+            size_t chunkedpos = headers.find("chunked");
             if(chunkedpos != std::string::npos)
             {
                 FORPOSTSHOUDBE = 2;
             }
         }
     }
+    std::cout << "n_newlines " << n_newlines << std::endl;
 
-    if(((method=="GET" || method=="HEAD" ) && n_newlines == 1) || (method=="POST" && n_newlines == FORPOSTSHOUDBE))
+    if(((method=="GET" ||  method =="DELETE" ) && n_newlines == 1) || (method=="POST" && n_newlines == FORPOSTSHOUDBE) || (method!="GET" && method!="POST" && method!="DELETE"))
     {
         return 1;
     }
@@ -235,25 +239,7 @@ int Server::receive(int fd)
     int req;
     char buff[700000] = {0};
     std::string final_req;
-
-    // FD_CLR(fd, &(this->read_fds));
-    // std::cout << "Receiving request from client with fd: " << fd << std::endl;
-    // req = recv(fd, &buff, sizeof(buff), 0);
-    // std::cout << buff << std::endl;
-
     memset(buff, 0, sizeof(buff));
-    // while ((req = recv(fd, buff, sizeof(buff), 0)) > 0)
-    // {
-    //     int i = 0;
-    //     // while (i < req)
-    //     // {
-    //     //     final_req += buff[i];
-    //     //     i++;
-    //     // }
-    //     final_req+= std::string(buff, req);
-    //     memset(buff, 0, sizeof(buff));
-    // }
-
     while(true)
     {
         req = recv(fd, buff, sizeof(buff), 0);
@@ -267,7 +253,6 @@ int Server::receive(int fd)
         }
         final_req += std::string(buff, req);
         memset(buff, 0, sizeof(buff));
-        // usleep(100);
     }
 
 
@@ -295,7 +280,6 @@ int Server::receive(int fd)
         if (sockets_FD[index].clientFD == fd)
         {
             std::cout << sockets_FD[index].server.GetPort() << std::endl;
-            //---
             // std::cout << "================"<< std::endl;
             // std::cout << "Request: " << final_req << std::endl;
             // std::cout << "@@@@@@@@@@@@@@@@@@@@@@@"<< std::endl;
@@ -308,11 +292,6 @@ int Server::receive(int fd)
 void Server::send(Client *clientInfo)
 {
     Request req = clientInfo->clientRequest;
-
-    // std::cout << "================"<< std::endl;
-    // std::cout << "Request: " << req.get_request() << std::endl;
-    // std::cout << "len Request: " << req.get_request().length() << std::endl;
-    // std::cout << "@@@@@@@@@@@@@@@@@@@@@@@"<< std::endl;
     parse_request(req, clientInfo);
 }
 

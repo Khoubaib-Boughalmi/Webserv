@@ -1,10 +1,11 @@
 #include "Content.hpp"
 
-Content::Content(std::string &content, std::string &boundary, Routes &route) {
+Content::Content(std::string &content, std::string &boundary, Routes &route,size_t limit) {
+    this->status = 201;
     this->content = content;
     this->boundary = boundary;
     this->is_file = false;
-    this->parse_content(route);
+    this->parse_content(route,limit);
 }
 
 Content::Content() {}
@@ -25,7 +26,7 @@ Content &Content::operator=(const Content &copy) {
     return *this;
 }
 
-void Content::parse_content(Routes &route) {
+void Content::parse_content(Routes &route,size_t limit) {
     int lineinfopos=this->content.find("Content-Disposition:");
     std::string lineInfo=this->content.substr(lineinfopos,this->content.find("\r\n",lineinfopos)-lineinfopos);
 
@@ -45,11 +46,11 @@ void Content::parse_content(Routes &route) {
     if(pos != std::string::npos) {
         this->content_name = lineInfo.substr(pos + 6, lineInfo.find("\"", pos + 6) - pos - 6);
     }
-    // check folder exist
-    // struct stat st = {0};
-    // if (stat("./static/upload", &st) == -1) {
-    //     mkdir("./static/upload", 0700);
-    // }
+    if(this->body.length() > limit)
+    {
+        this->status=413;
+        return;
+    }
     if(this->is_file && route.getUploadEnabled())
     {
         std::ofstream myfile;

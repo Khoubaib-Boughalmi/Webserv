@@ -10,11 +10,12 @@
 
 class Content{
     public:
-        Content(std::string &content, std::string &boundary,Routes &route);
+        Content(std::string &content, std::string &boundary,Routes &route,size_t limit);
         ~Content();
         Content(const Content &copy);
         Content &operator=(const Content &copy);
-        void parse_content(Routes &route);
+        void parse_content(Routes &route,size_t limit);
+        int status;
 
     private:
         Content();
