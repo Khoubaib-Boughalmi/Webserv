@@ -103,27 +103,29 @@ std::string readFile(const std::string &filename)
 
 void HandleDelete(std::string &uri, Response &response)
 {
+    std::string rooted_uri = "static" + uri;
+    std::cout << rooted_uri << std::endl;
     DIR *dir;
-    if (access(uri.c_str(), F_OK) == 0)
+    if (access(rooted_uri.c_str(), F_OK) == 0)
     {
-        // check if uri is directory
-        dir = opendir(uri.c_str());
+        // check if rooted_uri is directory
+        dir = opendir(rooted_uri.c_str());
         // if dir is NULL then the request is file
         if (dir == NULL)
         {
-            if (remove(uri.c_str()) == 0)
+            if (remove(rooted_uri.c_str()) == 0)
                 response.setStatus(204).setBody(readFile("")).setContentType(getMimeType("html"));
             else
                 response.setStatus(500).setBody(readFile("static/error_pages/500.html")).setContentType(getMimeType("html"));
         }
         else
         {
-            char bck = uri.back();
+            char bck = rooted_uri.back();
             if (bck == '/')
             {
-                if (access(uri.c_str(), W_OK) == 0)
+                if (access(rooted_uri.c_str(), W_OK) == 0)
                 {
-                    if (remove(uri.c_str()) == 0)
+                    if (remove(rooted_uri.c_str()) == 0)
                         response.setStatus(204).setBody(readFile("")).setContentType(getMimeType("html"));
                     else
                     response.setStatus(500).setBody(readFile("static/error_pages/500.html")).setContentType(getMimeType("html"));
@@ -132,7 +134,7 @@ void HandleDelete(std::string &uri, Response &response)
                     response.setStatus(403).setBody(readFile("static/error_pages/403.html")).setContentType(getMimeType("html"));
             }
             else
-                response.setStatus(409).setBody(readFile("409.html")).setContentType(getMimeType("html"));
+                response.setStatus(409).setBody(readFile("static/error_pages/409.html")).setContentType(getMimeType("html"));
             closedir(dir);
         }
     }
@@ -644,19 +646,16 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     Response response;
     std::string uri;
     std::vector<Routes> routes = clientInfo->server.GetRoutes();
-    // if (request.get_path().length() >= 1)
     uri = request.get_path();
-    // else
-    // {
-    //     response.setStatus(500).setBody(readFile("static/error_pages/500.html")).setContentType(getMimeType("html"));
-    //     response.sendResponse(clientInfo->clientFD);
-    //     return ;
-    // }
     if(request.get_method()=="HEAD")
     {
         response.setStatus(501)
             .setBody("")
             .setContentType(getMimeType("html"));
+    }
+    else if (request.get_method() == "DELETE")
+    {
+        HandleDelete(uri, response);
     }
     else if (!is_valid_method(request.get_method()))
         response.setStatus(501)
@@ -682,10 +681,6 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     else if (request.get_method() == "POST")
     {
         HandlePost(request, response, clientInfo, uri, routes);
-    }
-    else if (request.get_method() == "DELETE")
-    {
-        HandleDelete(uri, response);
     }
     else
         response.setStatus(500).setBody(readFile("static/error_pages/500.html")).setContentType(getMimeType("html"));
