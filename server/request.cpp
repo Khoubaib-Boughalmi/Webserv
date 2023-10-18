@@ -598,8 +598,10 @@ int HandlePost(Request &request, Response &response, Client *clientInfo,std::str
     if(request.get_request().find("Content-Type: multipart/form-data") != std::string::npos)
     {
         Post_handle_form_data(request.get_request(), response,route);
+        response.setStatus(200).setLocation("/").setBody(readFile("static/index.html")).setContentType(getMimeType("html"));
+        //dont forget to fix the response 
     }
-    if (has_cgi(uri)) {
+    else if (has_cgi(uri)) {
         std::string abs_path = get_abs_path(uri, routes);
         {
             std::string body = request.get_body();

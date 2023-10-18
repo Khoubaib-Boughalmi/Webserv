@@ -218,9 +218,7 @@ int check_the_req(std::string req)
             {
                 FORPOSTSHOUDBE = 2;
             }
-
         }
-
     }
 
     if(((method=="GET" || method=="HEAD" ) && n_newlines == 1) || (method=="POST" && n_newlines == FORPOSTSHOUDBE))
