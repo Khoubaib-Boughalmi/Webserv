@@ -367,12 +367,10 @@ std::string GetDefaultFile(const std::vector<Routes>& routes, const std::string&
 void    cgi_non_blocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
-        perror("fcntl err: "); // to be changed to log
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("fcntl err: ");
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) { // modify it to be compatible with the subject
-        perror("fcntl err: ");
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("fcntl err: ");
     }
 }
 
@@ -399,8 +397,7 @@ void    send_cgibin_response(std::string& body, const char *abs_path, std::strin
     }
         // rooted_uri = "/static/cgi-bin/index.php";
     if(pipe(pipefd) < 0) {
-        perror("pipe err: ");
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("pipe err: ");
     }
     cgi_non_blocking(pipefd[0]);
     cgi_non_blocking(pipefd[1]);
@@ -422,7 +419,7 @@ void    send_cgibin_response(std::string& body, const char *abs_path, std::strin
             NULL
         };
         if (execve(abs_path, args, NULL) < 0) {
-            perror("execv err: ");
+            throw std::runtime_error("execve err: ");
             exit(EXIT_FAILURE);
         }
     }

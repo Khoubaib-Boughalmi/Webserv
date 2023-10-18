@@ -13,6 +13,7 @@
 #include <algorithm>
 # include <unistd.h>
 #include <sys/wait.h>
+#include <exception>
 
 class   Routes {
     public:
@@ -40,7 +41,6 @@ class   Routes {
         const std::string& get_cgi_bin() const;
 
 
-        // TODO : add getters
         void    clear();
 
         void    print();
@@ -89,6 +89,17 @@ class   Servers {
 
         void    print();
         void    clear();
+
+        class   ServerException : public std::exception {
+            public:
+                ServerException(const std::string& msg) : _msg(msg) {}
+                virtual ~ServerException() throw() {}
+                virtual const char* what() const throw() {
+                    return _msg.c_str();
+                }
+            private:
+                std::string _msg;
+        };
     private:
         std::string                         host;
         int                                 port;
@@ -114,5 +125,5 @@ void        setup_methods(std::vector<std::string>&, std::string&);
 void        extract_routes(std::vector<std::string>&, std::string);
 void        fill_routes(Routes&, std::string);
 void        setup_routes(std::vector<std::string>, Servers&);
-void        CreateServer(std::string, int, Servers&);
+void        CreateServer(std::string, int, Servers&, int);
 std::string TrimSpaces(const std::string&);

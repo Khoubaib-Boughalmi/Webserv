@@ -78,6 +78,10 @@ void extract_server(std::string &config, std::string &server)
 
 void parse_file(std::string config, int servers_nb, std::vector<std::string> &servers)
 {
+    if (!config.length() || servers_nb == 0) {
+        throw(Servers::ServerException("Invalid file"));
+        exit(EXIT_FAILURE);
+    }
     std::string server;
     for (int i = 0; i < servers_nb; i++)
     {
@@ -94,10 +98,7 @@ void read_file(std::string filename, std::string &conf, int &servers_nb)
     std::string line;
 
     if (!ss.is_open())
-    {
-        std::cerr << "error opening the file" << std::endl;
-        exit(1);
-    }
+        throw(Servers::ServerException("error opening the file"));
     while (std::getline(ss, line))
     {
         if (line.find("server") == 0)
@@ -117,15 +118,22 @@ void    split_error_pages(std::vector<std::string>& res, std::string input) {
             res.push_back(TrimSpaces(name));
         }
     }
+    if (res.empty()) {
+        throw(Servers::ServerException("Invalid error pages"));
+        exit(EXIT_FAILURE);
+    }
 }
 
-void    setup_error_pages(std::string& line) {
+void    setup_error_pages(std::string& line, std::vector<std::string>& error_pages) {
     line = TrimSpaces(line);
     std::map<std::string, std::string>  res;
     std::map<std::string, std::string>::iterator    it;;
     split_line(res, line, ":");
     it = res.begin();
-    std::vector<std::string>    error_pages;
+    if(!it->second.length()) {
+        throw(Servers::ServerException("Invalid error pages"));
+        exit(EXIT_FAILURE);
+    }
     split_error_pages(error_pages, TrimSpaces(it->second));
 }
 
@@ -146,6 +154,10 @@ void    setup_methods(std::vector<std::string>& methods, std::string& line) {
     std::map<std::string, std::string>::iterator    it;;
     split_line(res, line, ":");
     it = res.begin();
+    if (!it->second.length()) {
+        throw(Servers::ServerException("Invalid methods"));
+        exit(EXIT_FAILURE);
+    }
     split_methods(methods, it->second);
 
 }
@@ -193,6 +205,10 @@ void    fill_routes(Routes& route, std::string routes) {
         if (find_word(line, "path")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid path"));
+                exit(EXIT_FAILURE);
+            }
             route.SetPath(TrimSpaces(it->second));
             res.erase(it->first);
         }
@@ -203,6 +219,10 @@ void    fill_routes(Routes& route, std::string routes) {
         else if (find_word(line, "directory_listing")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid directory listing"));
+                exit(EXIT_FAILURE);
+            }
             if (find_word(TrimSpaces(it->second), "true")) {
                 route.SetDirectoryListing(true);
             }
@@ -214,24 +234,40 @@ void    fill_routes(Routes& route, std::string routes) {
         else if (find_word(line, "default_file")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid default file"));
+                exit(EXIT_FAILURE);
+            }
             route.SetDefaultFile(TrimSpaces(it->second));
             res.erase(it->first);
         }
         else if (find_word(line, "cgi_extensions")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid cgi extensions"));
+                exit(EXIT_FAILURE);
+            }
             route.SetCgiExtension(TrimSpaces(TrimSpaces(it->second)));
             res.erase(it->first);
         }
         else if (find_word(line, "cgi_bin")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid cgi bin"));
+                exit(EXIT_FAILURE);
+            }
             route.SetCgiBin(TrimSpaces(it->second));
             res.erase(it->first);
         }
         else if (find_word(line, "upload_enabled")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid upload enabled"));
+                exit(EXIT_FAILURE);
+            }
             if (find_word(it->second, "true")) {
                 route.SetUploadEnabled(true);
             }
@@ -243,12 +279,20 @@ void    fill_routes(Routes& route, std::string routes) {
         else if (find_word(line, "upload_directory")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid upload directory"));
+                exit(EXIT_FAILURE);
+            }
             route.SetUploadDirectory(TrimSpaces(it->second));
             res.erase(it->first);
         }
         else if (find_word(line, "redirect_url")) {
             split_line(res, line, ":");
             it = res.begin();
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid redirect url"));
+                exit(EXIT_FAILURE);
+            }
             route.SetRedirectUrl(TrimSpaces(it->second));
             res.erase(it->first);
         }
@@ -267,58 +311,75 @@ void    setup_routes(std::vector<std::string>   rts_vector, Servers& server) {
     }
 }
 
-void    CreateServer(std::string server_config, int sock, Servers& server) {
+bool IsNumber(const std::string &str) {
+    for (std::string::const_iterator it = str.begin(); it != str.end(); ++it) {
+        if (!std::isdigit(*it)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void    CreateServer(std::string server_config, int sock, Servers& server, int index) {
     std::stringstream   ss(server_config);
     std::string         line;
     std::string         tmp;
     std::map<std::string, std::string>  res;
     std::map<std::string, std::string>::iterator    it;
     std::vector<std::string>    routes;
+    std::vector<std::string>    e_pages;
     std::vector<std::string>::iterator ite;
+    std::string        check;
 
     extract_routes(routes, server_config);
     while (std::getline(ss, line)) {
         if (find_word(line, "server"))
             continue ;
-        else if (find_word(line, "host")) {
+        else if (line.find("host") != std::string::npos) {
             split_line(res, line, ":");
             it = res.begin();
+            if (it->first != "host" || !it->second.length()) {
+                throw(Servers::ServerException("Invalid host"));
+                exit(EXIT_FAILURE);
+            }
             server.SetHost(it->second);
             res.erase(it->first);
         }
-        else if (find_word(line, "port")) {
+        else if (line.find("port") != std::string::npos) {
             split_line(res, line, ":");
             it = res.begin();
+            if (it->first != "port") {
+                throw(Servers::ServerException("Invalid port"));
+                exit(EXIT_FAILURE);
+            }
             {
                 std::stringstream   ss(it->second);
                 int tmp;
-                if (!(ss >> tmp)) {
-                    std::cerr << "Errooooooooòr" << std::endl;
+                if (!IsNumber(TrimSpaces(it->second)) || !(ss >> tmp) || tmp < 1024 || tmp > 65535) {
+                    throw(Servers::ServerException("Invalid port"));
                     exit(EXIT_FAILURE);
                 }
+            }
+            if (!it->second.length()) {
+                throw(Servers::ServerException("Invalid port"));
+                exit(EXIT_FAILURE);
             }
             server.SetPort(std::strtol(it->second.c_str(), NULL, 10));
             res.erase(it->first);
         }
-        else if (find_word(line, "default")) {
-            split_line(res, line, ":");
-            it = res.begin();
-            if (find_word(it->second, "true")) {
-                server.SetDefault(true);
-            }
-            else
-                server.SetDefault(false);
-            res.erase(it->first);
-        }
-        if (find_word(line, "server_names")) {
-            setup_server_names(line, server);
-        }
         else if (find_word(line, "error_pages")) {
-            setup_error_pages(line);
+            setup_error_pages(line, e_pages);
+            server.SetErrorPages(e_pages);
         }
         else if (find_word(line, "client_body_limit")) {
             split_line(res, line, ":");
             it = res.begin();
+            {
+                if (!IsNumber(TrimSpaces(it->second))) {
+                    throw(Servers::ServerException("Invalid client body limit"));
+                    exit(EXIT_FAILURE);
+                }
+            }
             server.SetClientBodyLimit(TrimSpaces(it->second));
             res.erase(it->first);
         }
@@ -326,5 +387,13 @@ void    CreateServer(std::string server_config, int sock, Servers& server) {
             setup_routes(routes, server);
         }
     }
+    server.SetDefault(false);
+    if (!index)
+        server.SetDefault(true);
     server.SetSock(sock);
+    if (server.GetPort() < 0 || server.GetClientBodyLimit().empty() || server.GetErrorPages().empty() || server.GetRoutes().empty())
+    {
+        throw(Servers::ServerException("Invalid Config File"));
+        exit(EXIT_FAILURE);
+    }
 }

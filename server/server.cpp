@@ -56,15 +56,9 @@ void Server::set_non_blocking_socket(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
-    {
-        perror("fcntl err: "); // to be changed to log
-        exit(EXIT_FAILURE);
-    }
+        throw Servers::ServerException("fcntl err: ");
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-    { // modify it to be compatible with the subject
-        perror("fcntl err: ");
-        exit(EXIT_FAILURE);
-    }
+        throw Servers::ServerException("fcntl err: ");
 }
 
 void Server::initialize_server_address(const char *ip)
@@ -94,19 +88,17 @@ void Server::initialization_and_socket_creation(std::vector<std::string> &server
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         //
         // Servers tmp(*it) // throws BadSocketException
-        CreateServer(*it, sock, tmp);
+        CreateServer(*it, sock, tmp, i);
         // tmp.print();
         master_sockets.push_back(tmp);
         if (master_sockets[i].GetSock() < 0)
         {
-            perror("Master socket creation err: "); //
-            exit(EXIT_FAILURE);                     //
+            throw Servers::ServerException("Master socket creation err: ");
         }
         // make master_fd address reusable
         if (setsockopt(master_sockets[i].GetSock(), SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
         {
-            perror("setsockopt err: "); //
-            exit(EXIT_FAILURE);         //
+            throw Servers::ServerException("setsockopt err: ");
         }
         // make master_fd non_blocking&add it to master_fds
         set_non_blocking_socket(master_sockets[i].GetSock());
@@ -128,14 +120,12 @@ void Server::bind_and_listen(void)
     {
         if (bind(master_sockets[i].GetSock(), (struct sockaddr *)&(this->addresses[i]), sizeof(this->addresses[i])) < 0)
         {
-            perror("Bind err: ");
-            exit(EXIT_FAILURE);
+            throw Servers::ServerException("Bind err: ");
         }
         // listen to master_fd
         if (listen(master_sockets[i].GetSock(), 10) < 0)
         {
-            perror("Listen err: ");
-            exit(EXIT_FAILURE);
+            throw Servers::ServerException("Listen err: ");
         }
     }
 }
@@ -167,8 +157,8 @@ void Server::accept_new_request(Servers &active_server)
     int client_fd = accept(active_server.GetSock(), (struct sockaddr *)&(this->addresses[0]), &(this->addrlen));
     if (client_fd < 0)
     {
-        perror("Client Connection err: "); //
-        return;                            //
+        throw Servers::ServerException("Accept err: ");
+        return ;                            //
     }
     std::cout << "New request accepted" << std::endl;
     set_non_blocking_socket(client_fd);
@@ -367,8 +357,7 @@ void Server::select_accept_recv_send_handler(void)
         activity_fds = select(1024, &(this->read_fds), &(this->write_fds), NULL, &tv);
         if (activity_fds < 0)
         {
-            perror("select err: ");
-            exit(EXIT_FAILURE);
+            throw Servers::ServerException("select err: ");
         }
         check_for_timeout();
         // if there is an activty in master_sockets[0] then it's a new request
