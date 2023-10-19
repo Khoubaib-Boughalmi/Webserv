@@ -10,6 +10,7 @@ Server::Server(char *config_file)
     Server::initialization_and_socket_creation(servers, servers.size());
     Server::bind_and_listen();
     Server::select_accept_recv_send_handler();
+
 }
 
 Server::~Server() {}
@@ -45,8 +46,10 @@ void Server::cleanFDSet(void)
 
 void Server::add_fd_to_master_set(int fd, Servers &server)
 {
-    Client *new_client = new Client(fd, master_sockets[0].GetSock(), server); // serverFD not important for now
-    sockets_FD.push_back(*new_client);
+    // Client *new_client = new Client(fd, master_sockets[0].GetSock(), server); // serverFD not important for now
+    Client client(fd, master_sockets[0].GetSock(), server);
+    sockets_FD.push_back(client);
+    
     FD_SET(fd, &(this->master_fds));
     if (fd > this->highest_fd_val)
         this->highest_fd_val = fd;
@@ -89,6 +92,7 @@ void Server::initialization_and_socket_creation(std::vector<std::string> &server
         //
         // Servers tmp(*it) // throws BadSocketException
         CreateServer(*it, sock, tmp, i);
+
         // tmp.print();
         master_sockets.push_back(tmp);
         if (master_sockets[i].GetSock() < 0)
@@ -103,6 +107,8 @@ void Server::initialization_and_socket_creation(std::vector<std::string> &server
         // make master_fd non_blocking&add it to master_fds
         set_non_blocking_socket(master_sockets[i].GetSock());
         add_fd_to_master_set(master_sockets[i].GetSock(), tmp);
+        // system("leaks webserv");
+        // exit(EXIT_SUCCESS);
         initialize_server_address(std::to_string(tmp.GetPort()).c_str());
         std::cout << "Server is listening on port " << tmp.GetPort() << std::endl;
         if (it != servers.end())

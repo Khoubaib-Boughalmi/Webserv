@@ -10,6 +10,10 @@
 #define MAX_CONNECTIONS 42
 #define PORT            8080
 
+struct globalTrash{
+    std::vector<Client>         sockets_fd_trash;
+};
+
 class Client;
 class Server
 {
