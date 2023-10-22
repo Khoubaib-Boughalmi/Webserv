@@ -47,7 +47,7 @@ std::string Response::getStatusMessage(int statusCode) const {
     }
 }
 
-void Response::sendResponse(const int clientFD) const {
+int Response::sendResponse(const int clientFD) const {
     std::string response;
     response = "HTTP/1.1 ";
     response.append(std::to_string(statusCode));
@@ -62,15 +62,14 @@ void Response::sendResponse(const int clientFD) const {
     response.append("Content-Length: ");
     response.append(std::to_string(responseBody.size()));
     response.append("\r\n");
-    response.append("set-cookie: "); // if post req for the first time to login then set cookie otherwise don't
+    response.append("set-cookie: ");
     response.append(cookie);
     response.append("\r\n");
     response.append("Content-Type: ");
     response.append(contentType);
     response.append("\r\n\r\n");
     response.append(responseBody);
-    // std::cout << response << std::endl;
-    send(clientFD, response.c_str() , response.length() , 0);
+    return (send(clientFD, response.c_str() , response.length() , 0));
 }
 
 std::map<std::string, std::string>  _mimeTypes;
@@ -79,7 +78,6 @@ void initializeMimeTypes() {
     _mimeTypes["htm"] = "text/html";
     _mimeTypes["txt"] = "text/plain";
     _mimeTypes["jpg"] = "image/jpeg";
-    _mimeTypes["jpeg"] = "image/jpeg";
     _mimeTypes["png"] = "image/png";
     _mimeTypes["zip"] = "application/zip";
 

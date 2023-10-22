@@ -5,7 +5,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f1f1f1;
+            background-color: #90c6b7;
         }
         
         .container {
@@ -51,7 +51,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>HELLO WORLD</h2>
+        <h2>PHP CGI FORM</h2>
         <form action="/cgi-bin/post.py" method="POST">
             <div class="form-group">
                 <label for="username">Username:</label>
@@ -62,7 +62,7 @@
                 <input type="password" id="password" name="password" required>
             </div>
             <div class="form-group">
-                <button type="submit">TEEEEEST</button>
+                <button type="submit">SUBMIT FORM</button>
             </div>
         </form>
     </div>

@@ -7,7 +7,7 @@
 
 #define TRUE            1
 #define FALSE           0
-#define MAX_CONNECTIONS 42
+#define MAX_CONNECTIONS 1024
 #define PORT            8080
 
 class Client;
@@ -31,6 +31,16 @@ class Server
     std::vector<struct sockaddr_in>          addresses;  
     std::vector<std::string>    ports;
 
+    class   ServerExceptions : public std::exception {
+        public:
+            ServerExceptions(const std::string& msg) : _msg(msg) {}
+            virtual ~ServerExceptions() throw() {}
+            virtual const char* what() const throw() {
+                return _msg.c_str();
+            }
+        private:
+            std::string _msg;
+    };
     //default constructor copy constructor and assignment operator are deleted    
     Server(char*);
     Server(const Server &copy);
@@ -46,7 +56,7 @@ class Server
     void add_fd_to_master_set (int fd, Servers& server);
     void handle_already_existing_connection(void) ;
     int receive (int fd);
-    void send (Client *client);
+    int send (Client *client);
     void cleanFDSet (void);
     void check_for_timeout (void);
     void update_client_connected_time (int fd);

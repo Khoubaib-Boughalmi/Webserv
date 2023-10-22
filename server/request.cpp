@@ -90,21 +90,33 @@ Request::Request(std::string req): is_valid(1)
 
 std::string readFile(const std::string &filename)
 {
-    std::ifstream file(filename.c_str());
-    if (!file.is_open())
-    {
-        return "";
-    }
+    if (GetFileExtension(filename) == "html") {
+        std::ifstream file(filename.c_str());
+        if (!file.is_open())
+        {
+            return "";
+        }
 
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
+    else {
+        std::ifstream file(filename.c_str(), std::ios::binary);
+        if (!file.is_open())
+        {
+            return "";
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
 }
 
 void HandleDelete(std::string &uri, Response &response)
 {
     std::string rooted_uri = "static" + uri;
-    std::cout << rooted_uri << std::endl;
     DIR *dir;
     if (access(rooted_uri.c_str(), F_OK) == 0)
     {
@@ -371,7 +383,7 @@ void    cgi_non_blocking(int fd) {
     if (flags == -1) {
         throw std::runtime_error("fcntl err: ");
     }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) { // modify it to be compatible with the subject
+    if (fcntl(fd, F_SETFL, O_NONBLOCK, FD_CLOEXEC) == -1) { // modify it to be compatible with the subject
         throw std::runtime_error("fcntl err: ");
     }
 }
@@ -430,7 +442,7 @@ void    send_cgibin_response(std::string& body, const char *abs_path, std::strin
         waitpid(child_fd, &status, 0);
         while (read(pipefd[0], buff, sizeof(buff)) != 0) {
             response += buff;
-            memset(buff, 0, sizeof(buff));
+            std::memset(buff, 0, sizeof(buff));
         }
         close(pipefd[0]);
         std::ostringstream oss;
@@ -491,15 +503,17 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
         else
         {
             if (directory_listing(uri, routes)) {
+                if (GetDefaultFile(routes, uri).empty()) {
                 response.setStatus(200).setLocation(uri)
                     .setBody(generateDirectoryListing("static" + uri))
                     .setContentType(getMimeType("html"));
                 return ;
+                }
             }
             else
             {
                 response.setStatus(403)
-                    .setBody(readFile("static/error_pages/404.html"))
+                    .setBody(readFile("static/error_pages/403.html"))
                     .setContentType(getMimeType("html"));
             }
         }
@@ -521,7 +535,7 @@ void HandleGet(std::string uri, std::vector<Routes> &routes, Request& request, R
         {
             if (check_cookies(request.get_cookie())) {
                 if (uri == "/") {
-                    response.setStatus(200).setLocation(uri).setLocation("/")
+                    response.setStatus(200).setLocation("/")
                         .setBody(readFile("static/" + GetDefaultFile(routes, uri)))
                         .setContentType(getMimeType(GetFileExtension(uri)));
                 }
@@ -579,7 +593,7 @@ void    Post_handle_form_data(std::string req, Response &response,Routes &route,
                     status = statusres;
             }
         }
-    response.setStatus(status).setBody("").setContentType(getMimeType("html"));
+    response.setStatus(status).setBody(readFile("static/success.html")).setContentType(getMimeType("html"));
 }
 
 Routes Route_returning(const std::string &requestedPath, std::vector<Routes> &routes)
@@ -641,7 +655,7 @@ int HandlePost(Request &request, Response &response, Client *clientInfo,std::str
     return (0);
 }
 
-void parse_request(Request &request, Client *clientInfo) // TODO: check request for inprintable characters
+int parse_request(Request &request, Client *clientInfo) // TODO: check request for inprintable characters
 {
     Response response;
     std::string uri;
@@ -684,7 +698,7 @@ void parse_request(Request &request, Client *clientInfo) // TODO: check request 
     }
     else
         response.setStatus(500).setBody(readFile("static/error_pages/500.html")).setContentType(getMimeType("html"));
-    response.sendResponse(clientInfo->clientFD);
+    return (response.sendResponse(clientInfo->clientFD));
 }
 
 Request::~Request() {}

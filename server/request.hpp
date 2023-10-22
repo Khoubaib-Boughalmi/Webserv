@@ -73,5 +73,5 @@ class Request
         void fillBodyFromPostRequest(const std::string& request);
         void print_request(void);
 };
-
+std::string GetFileExtension(const std::string& filename);
 #endif

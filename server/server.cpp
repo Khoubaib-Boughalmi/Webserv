@@ -45,8 +45,8 @@ void Server::cleanFDSet(void)
 
 void Server::add_fd_to_master_set(int fd, Servers &server)
 {
-    Client *new_client = new Client(fd, master_sockets[0].GetSock(), server); // serverFD not important for now
-    sockets_FD.push_back(*new_client);
+    Client clinet(fd, master_sockets[0].GetSock(), server);
+    sockets_FD.push_back(clinet);
     FD_SET(fd, &(this->master_fds));
     if (fd > this->highest_fd_val)
         this->highest_fd_val = fd;
@@ -70,6 +70,22 @@ void Server::initialize_server_address(const char *ip)
     address.sin_port = htons(std::strtol(ip, NULL, 10)); //
     addrlen = sizeof(address);
     this->addresses.push_back(address);
+}
+
+bool isPortRepeated(const std::vector<Servers>& serverVector) {
+    std::vector<int> ports;
+
+    for (size_t i = 0; i < serverVector.size(); ++i) {
+        int port = serverVector[i].GetPort();
+        if (std::find(ports.begin(), ports.end(), port) != ports.end()) {
+            // Port is repeated, return false
+            return false;
+        }
+        ports.push_back(port);
+    }
+
+    // If we reach here, no port is repeated
+    return true;
 }
 
 void Server::initialization_and_socket_creation(std::vector<std::string> &servers, size_t servers_nb)
@@ -110,6 +126,10 @@ void Server::initialization_and_socket_creation(std::vector<std::string> &server
             ++it;
             tmp.clear();
         }
+    }
+    if (!isPortRepeated(master_sockets)) {
+        throw Servers::ServerException("Port Repeated");
+        exit (1);
     }
 }
 
@@ -183,14 +203,11 @@ int get_numberof(std::string str, std::string substr)
     return number;
 }
 
-
 int check_the_req(std::string req)
 {
     std::string method = req.substr(0, req.find(" "));
-    std::cout << "method " << method << std::endl;
 
     int n_newlines = get_numberof(req, "\r\n\r\n");
-    std::cout << "number of it " << n_newlines << std::endl;
     int FORPOSTSHOUDBE = 1;
     if(method=="POST")
     {
@@ -213,14 +230,11 @@ int check_the_req(std::string req)
             }
         }
     }
-    std::cout << "n_newlines " << n_newlines << std::endl;
 
     if(((method=="GET" ||  method =="DELETE"||  method =="HEAD" ) && n_newlines == 1 ) || (method=="POST" && n_newlines == FORPOSTSHOUDBE) || (method!="GET" && method!="POST" && method!="DELETE" && method!="HEAD"))
     {
         return 1;
     }
-
-
     return 0;
 }
 
@@ -229,7 +243,7 @@ int Server::receive(int fd)
     int req;
     char buff[700000] = {0};
     std::string final_req;
-    memset(buff, 0, sizeof(buff));
+    std::memset(buff, 0, sizeof(buff));
     while(true)
     {
         req = recv(fd, buff, sizeof(buff), 0);
@@ -241,8 +255,8 @@ int Server::receive(int fd)
                 break;
             continue;                
         }
-        final_req += std::string(buff, req);
-        memset(buff, 0, sizeof(buff));
+        final_req.append(buff, req);
+        std::memset(buff, 0, sizeof(buff));
     }
 
 
@@ -269,20 +283,16 @@ int Server::receive(int fd)
     {
         if (sockets_FD[index].clientFD == fd)
         {
-            std::cout << sockets_FD[index].server.GetPort() << std::endl;
-            // std::cout << "================"<< std::endl;
-            // std::cout << "Request: " << final_req << std::endl;
-            // std::cout << "@@@@@@@@@@@@@@@@@@@@@@@"<< std::endl;
             sockets_FD[index].clientRequest = Request(final_req);
         }
     }
     return (1);
 }
 
-void Server::send(Client *clientInfo)
+int Server::send(Client *clientInfo)
 {
     Request req = clientInfo->clientRequest;
-    parse_request(req, clientInfo);
+    return (parse_request(req, clientInfo));
 }
 
 int Server::check_if_fd_is_server(int fd)
@@ -300,7 +310,7 @@ void Server::check_for_timeout(void)
     for (size_t index = 0; index < sockets_FD.size(); index++)
     {
         double elapsedTime = (time(0) - sockets_FD[index].connected_time);
-        if (!check_if_fd_is_server(sockets_FD[index].clientFD) && elapsedTime > 5)
+        if (!check_if_fd_is_server(sockets_FD[index].clientFD) && elapsedTime > 500)
         {
             std::cout << "Client with fd " << sockets_FD[index].clientFD << " Timed out" << std::endl;
             close(sockets_FD[index].clientFD);
@@ -327,7 +337,14 @@ void Server::handle_already_existing_connection(void)
         }
         if (FD_ISSET(sockets_FD[index].clientFD, &(this->write_fds)) && !check_if_fd_is_server(sockets_FD[index].clientFD))
         {
-            send(&sockets_FD[index]);
+            if (send(&sockets_FD[index]) < 1) {
+                throw   ServerExceptions("Send Error");
+            }
+                close(sockets_FD[index].clientFD);
+                FD_CLR(sockets_FD[index].clientFD, &(this->read_fds));
+                FD_CLR(sockets_FD[index].clientFD, &(this->master_fds));
+                sockets_FD.erase(sockets_FD.begin() + index); // remove client fd from sockets_FD after sending response
+                std::cout << "Client with fd " << sockets_FD[index].clientFD << " closed" << std::endl;
             break;
         }
     }

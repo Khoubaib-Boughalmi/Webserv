@@ -1,7 +1,6 @@
 CC= c++ 
 NAME=webserv
-CFLAGS= -Wall -Wextra -Werror -fsanitize=address -g
-
+CFLAGS= -Wall -Wextra -Werror
 SRCS = 	./main.cpp \
 		./server/server.cpp \
 		./server/client.cpp \

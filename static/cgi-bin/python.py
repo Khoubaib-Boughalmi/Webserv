@@ -1,1 +1,2 @@
-print ("HELON DKSJDKJKADJ")
+while True:
+    print ("HELON DKSJDKJKADJ")

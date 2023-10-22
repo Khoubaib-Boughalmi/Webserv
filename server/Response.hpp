@@ -19,7 +19,7 @@ public:
 
     Response& setLocation(const std::string& location) ;
     
-    void sendResponse(const int) const;
+    int sendResponse(const int) const;
     std::string getStatusMessage(int statusCode) const;
 
 private:
