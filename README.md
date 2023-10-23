@@ -31,3 +31,8 @@ User-friendly error pages are integral to a seamless web experience, and we ensu
 ### Diverse Status Codes
 
 The server's responsiveness includes a variety of HTTP status codes, enabling clear communication between the server and clients.
+
+- ![Description 1]([link-to-image-1](https://github.com/Khoubaib-Boughalmi/Webserv/blob/master/assets/1697902585668.jpg))
+  - *Image discription goes hereeeee*
+- ![Description 2]([link-to-image-2](https://github.com/Khoubaib-Boughalmi/Webserv/blob/master/assets/1697902585668.jpg))
+  - *Description of Image 2*
